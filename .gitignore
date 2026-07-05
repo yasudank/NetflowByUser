@@ -1,0 +1,32 @@
+# Virtual environment
+.venv/
+venv/
+ENV/
+
+# Database configuration (sensitive credentials)
+db_config.toml
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Large catalog and targets directories (local data)
+cosmos/
+xmm_lss/
+targets/
+
+# Output directories
+design/
+ope/
+
+# Intermediate and run outputs
+optimized_pointings.ecsv
+optimized_coverage.png
+sky_distribution.png
+output.txt
+
+# OS-specific files
+.DS_Store
+Thumbs.db

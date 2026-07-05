@@ -1,0 +1,93 @@
+# ----------------------------------------------------------------------
+# Configuration file for PFS SSP Observation
+#
+# Here is a code snippet to read this configuration file in Python.
+# ----------------------------------------------------------------------
+# import yaml
+# with open("config.yaml", 'r') as f:
+#     config = yaml.safe_load(f)
+#
+# print(f"run: {config['run']}")
+# print(f"datamodel version: {config['pfs']['datamodel']}")
+# print(f"gurobi parameters: {config['gurobi']['param']}")
+# print(f"proposal_id: {config['proposal_id']}")
+# print(f"input_catalog: {config['input_catalog']['science_co']['id']}")
+#
+# ----------------------------------------------------------------------
+
+# PFS SSP observing run name
+run: "july2026" 
+
+# PFS-related software versions/branch/tags/commit hash for fiber allocation
+# They look like tags, commit hash, or branch names.
+pfs:
+    datamodel: ">w.2026.22"
+    pfs_utils: ">w.2026.22" 
+    ics_cobraCharmer: ">1.5.3"
+    ics_cobraOps: "v2.0.6" 
+    ets_fiberalloc: "v3.6"
+    Bench: null # TBD
+    pfs_instdata: ">1.8.72" 
+    cobra_coach_module_version: null
+    # Software parameters
+    black_dot_radius_margin: 1.65
+    dot_penalty: null
+    sm: [1, 2, 3, 4]
+    fiducialsAvoidDistance: 2.9
+    brokenCobrasMargin: 0.23
+
+# Gurobi version and input parameters
+gurobi:
+    version: "10.0.1"
+    param:
+        seed: 0
+        presolve: 1
+        method: 0
+        degenmoves: 0
+        heuristics: 0.6
+        mipfocus: 0
+        mipgap: 0.005
+        PreSOS2Encoding: 0
+        PreSOS1Encoding: 0
+        threads: 4
+
+# Proposal ID
+proposal_id: "S26A-OT02"
+
+# Input catalogs
+input_catalog:
+    sky_gaia: # dec < -30
+        id: 1006
+        version: "20230209"
+    sky_ps1: # dec > -30
+        id: 1007
+        version: "20230209"
+    fluxstd:
+        id: 3012
+        version: "3.5"
+    science:
+        id: 25040 # dummy value
+    science_co:  # TODO: update for new run
+        id: 10251
+    science_ga:  # TODO: update for new run
+        id: 10252
+    science_ge:  # TODO: update for new run
+        id: 10253
+
+# Catalog ID
+# Please choose the appropriate catId (catalog_id) from below.
+# SCIENCE (including user-defined SKY/FLUXSTD)
+#        CO: catId=10091 (PFS_SSP_CO_S25A)
+#            catId=10251 (PFS_SSP_CO_S25B)
+#        GA: catId=10092 (PFS_SSP_GA_S25A)
+#            catId=10252 (PFS_SSP_GA_S25B)
+#        GE: catId=10093 (PFS_SSP_GE_S25A)
+#            catId=10253 (PFS_SSP_GE_S25B)
+
+
+# SKY/FLUXSTD from Subaru Telescope
+#        SKY at dec < -30 (Gaia-based): 1006
+#        SKY at dec > -30 (PS1-based) : 1007
+#        FLUXSTD(Fstar_v3.3)          : 3006
+#        FLUXSTD(Fstar_v3.4)          : 3011
+#        FLUXSTD(Fstar_v3.5)          : 3012

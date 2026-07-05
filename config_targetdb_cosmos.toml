@@ -1,0 +1,20 @@
+[targetdb.sky]
+version = "20230209"
+
+[targetdb.fluxstd]
+version = "3.5"
+min_prob_f_star = 0
+input_catalog_id = 3012
+
+[gaiadb]
+ref_band = "phot_g_mean_mag"
+mag_min = -2.0 #all 
+mag_max = 22.5
+
+[input]
+dir = "/mnt/ugnas/work/PFS/work/netflow"
+fn_ppcList = "hexagons_cosmos_flat_centers.ecsv"
+#fn_ppcList = "optimized_pointings.ecsv"
+
+[output]
+dir = "./cosmos"
