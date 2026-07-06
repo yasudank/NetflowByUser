@@ -86,12 +86,14 @@ otime = pipe_config["obstime"]
 pointing_file = pipe_config["inputs"]["pointing_file"]
 
 if pointing_file is None:
-    print("\npointing_file is null. Running automatic FoV optimization...")
+    print("\npointing_file is null. Running automatic FoV optimization with guide star constraints...")
     num_fovs = pipe_config["netflow"].get("num_fields", 1)
     max_priority = pipe_config["netflow"].get("max_priority", 2)
+    min_stars_per_cam = pipe_config["netflow"].get("min_stars_per_cam", 2)
+    min_cams_with_stars = pipe_config["netflow"].get("min_cams_with_stars", 6)
     
     # 視野最適化関数の読み込み
-    from optimize_hex_fov import optimize_fovs
+    from optimize_hex_fov_with_guidestars import optimize_fovs_with_guidestars
     import pandas as pd
     from astropy.table import Table
     
@@ -129,8 +131,29 @@ if pointing_file is None:
     if len(df_filtered) == 0:
         raise ValueError(f"No targets found with priority <= {max_priority} for optimization.")
         
+    fgaia_catalog = pipe_config["inputs"].get("gaia_catalog", "cosmos/gaia.ecsv")
+    print(f"Reading Gaia catalog from: {fgaia_catalog} for optimization...")
+    t_gaia = Table.read(fgaia_catalog, format="ascii.ecsv")
+    df_gaia = t_gaia.to_pandas()
+    df_gaia["magnitude"] = df_gaia["phot_g_mean_mag"]
+    df_gaia["color"] = df_gaia["bp_rp"]
+    if "catalog" not in df_gaia.columns:
+        df_gaia["catalog"] = "gaia_dr3"
+    for col in ["pmra_error", "pmdec_error", "parallax_over_error", 
+                "astrometric_excess_noise", "astrometric_excess_noise_sig", 
+                "ruwe", "r_cmodel_mag", "r_cmodel_magerr", 
+                "r_extendedness_value", "phot_g_mean_flux_over_error", 
+                "in_galaxy_candidates"]:
+        if col not in df_gaia.columns:
+            df_gaia[col] = np.nan
+    df_gaia = df_gaia.fillna({"parallax": 1.0e-07, "pmra": 0.0, "pmdec": 0.0})
+    
     print(f"Optimizing for {num_fovs} fields...")
-    pointings, covered = optimize_fovs(df_filtered, num_fovs=num_fovs, pa_step=5.0)
+    pointings, covered = optimize_fovs_with_guidestars(
+        df_filtered, df_gaia, otime, num_fovs=num_fovs,
+        min_stars_per_cam=min_stars_per_cam, min_cams_with_stars=min_cams_with_stars,
+        pa_step=5.0
+    )
     
     # 結果を ECSV に保存する
     opt_table = Table(

@@ -65,10 +65,10 @@ Credentials and connection details (SSH/PostgreSQL) used during `pfsDesign` gene
 
 ### 0.4 Pointing Optimization (Field-of-View Optimization)
 
-Optimizes the pointing coordinates to cover the maximum number of targets up to the specified priority (default: 2) from the prepared target list, using a greedy search algorithm. The PFS Field of View is assumed to be hexagonal, and the center coordinates and Position Angle (PA) are determined. Results are saved in `optimized_pointings.ecsv`.
+Optimizes the pointing center coordinates and Position Angle (PA) to cover the maximum number of targets up to the specified priority (default: 2) from the prepared target list while ensuring each guide camera contains at least a specified number of guide stars. The PFS Field of View is assumed to be hexagonal, and Gaia catalog and PFI coordinate transformations are used to evaluate guide star constraints. Results are saved in `optimized_pointings.ecsv`.
 
 ```bash
-python optimize_hex_fov.py --input ./cosmos/targets_all_20260514.csv --max-priority 2 --num-fovs 4
+python optimize_hex_fov_with_guidestars.py --input ./cosmos/targets_all_20260514.csv --gaia-catalog ./cosmos/gaia.ecsv --max-priority 2 --num-fovs 4
 ```
 
 If the list of pointings is not specified when running `run_netflow.py`, this script will be automatically invoked to generate and use the optimized pointing list.
@@ -115,7 +115,7 @@ Loads the specified configuration files (YAML/TOML) to identify the observing pr
 
 ### (2) Automatic Pointing Optimization (FoV Optimization)
 If `inputs.pointing_file` in the configuration file is `null`, the **automatic pointing optimization feature** is automatically triggered.
-* Using the greedy maximum coverage algorithm in `optimize_hex_fov.py`, it searches for the center coordinates and position angle (PA) of the fields to most efficiently cover target stars satisfying `priority <= max_priority`.
+* Using the guide-star-constrained greedy maximum coverage algorithm in `optimize_hex_fov_with_guidestars.py`, it searches for the center coordinates and position angle (PA) of the fields to most efficiently cover target stars satisfying `priority <= max_priority`, while ensuring each of the 6 guide cameras contains a sufficient number of guide stars (defaulting to $\ge 2$ stars per camera).
 * It calculates the pointing information for the specified number of fields (`num_fields`) and automatically saves it as `optimized_pointings.ecsv`, which is used as the input pointing list for subsequent steps.
 
 ### (3) Temporary Exposure Time Overwrite and Assignment Calculation

@@ -16,6 +16,8 @@ __pycache__/
 cosmos/
 xmm_lss/
 targets/
+cosmos.tar.gz
+xmm_lss.tar.gz
 
 # Output directories
 design/
@@ -23,7 +25,9 @@ ope/
 
 # Intermediate and run outputs
 optimized_pointings.ecsv
+optimized_pointings_with_gs.ecsv
 optimized_coverage.png
+optimized_coverage_with_gs.png
 sky_distribution.png
 output.txt
 
