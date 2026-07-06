@@ -131,7 +131,20 @@ def solve_assignment(bench, tgt, telescopes, pipe_config):
         if fiber_non_allocation_cost is None:
             fiber_non_allocation_cost = pfs_config.get("fiber_non_allocation_cost", 0.0)
 
+        # SFA-like per-location constraints for sky fibers to avoid validation warnings
+        # The validation tool uses 20 specific geometric sectors (Laszlo regions).
+        # We must group the cobras exactly according to these sectors.
+        from pfs_obsproc_planning.utils import plot_pfsDesign as pldes
+        import pandas as pd
+        
+        df_fib_mock = pd.DataFrame({
+            'pfi_x': bench.cobras.centers.real,
+            'pfi_y': bench.cobras.centers.imag
+        })
+        cobraRegions = pldes.get_field_sector2(df_fib_mock)
+
         # Compute observation strategy
+        penalty = pipe_config["netflow"].get("locationGroupPenalty", 1e11)
         prob = nf.buildProblem(bench, tgt, tpos, classdict, t_obs,
                                vis_cost, cobraMoveCost=cobraMoveCost,
                                collision_distance=pipe_config["netflow"]["collision_distance"],
@@ -143,7 +156,10 @@ def solve_assignment(bench, tgt, telescopes, pipe_config):
                                blackDotPenalty=black_dot_penalty,
                                cobraSafetyMargin=cobra_safety_margin,
                                numReservedFibers=num_reserved_fibers,
-                               fiberNonAllocationCost=fiber_non_allocation_cost)
+                               fiberNonAllocationCost=fiber_non_allocation_cost,
+                               cobraLocationGroup=cobraRegions,
+                               minSkyTargetsPerLocation=12,
+                               locationGroupPenalty=1e11)
 
         print("solving the problem")
         prob.solve()
