@@ -159,4 +159,6 @@ netflow:
   t_obs: 900.0                              # Single exposure time for overwrite (seconds)
   num_fields: 4                              # Number of fields to optimize (FoV placement count)
   max_priority: 2                            # Maximum priority to consider for auto-optimization (smaller is higher priority)
+  min_stars_per_cam: 2                       # Minimum guide stars required per guide camera
+  min_cams_with_stars: 6                     # Minimum number of guide cameras that must meet the min_stars requirement
 ```

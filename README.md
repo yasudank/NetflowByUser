@@ -157,8 +157,8 @@ netflow:
   t_obs: 900.0                              # 露出上書き用の観測時間 (秒)
   num_fields: 4                              # ポインティング自動最適化時の視野数 (FoVの配置数)
   max_priority: 2                            # ポインティング自動最適化で考慮する最大優先度 (小さい値ほど高優先)
+  min_stars_per_cam: 2                       # 1つのガイドカメラ内に必要なガイド星の最小数
+  min_cams_with_stars: 6                     # min_stars_per_cam の条件を満たすべきガイドカメラの最小数（最大6）
 ```
 
 ---
-
-

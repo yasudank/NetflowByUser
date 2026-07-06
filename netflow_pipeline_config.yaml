@@ -27,6 +27,8 @@ netflow:
   t_obs: 900.0                              # seconds
   num_fields: 4
   max_priority: 2
+  min_stars_per_cam: 2                      # Minimum guide stars required per guide camera
+  min_cams_with_stars: 6                    # Minimum number of guide cameras that must meet the min_stars requirement
   collision_distance: 2.0
   elbow_collisions: true
   broken_cobras_margin: 1.0
