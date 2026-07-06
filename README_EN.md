@@ -121,7 +121,7 @@ If `inputs.pointing_file` in the configuration file is `null`, the **automatic p
 ### (3) Temporary Exposure Time Overwrite and Assignment Calculation
 Right before starting the assignment calculation with the netflow solver (Gurobi), the following actions are executed safely:
 * Temporarily backs up the original required exposure times (`_obs_time`) of the target `science` stars.
-* Temporarily overwrites the exposure times of all targets with the single-pointing nominal exposure time `t_obs` defined in the config (default: `3600.0`s). This optimizes the allocation for a single exposure independent of the catalog exposure times.
+* Temporarily overwrites the exposure times of all targets with the single-pointing nominal exposure time `t_obs` defined in the config (default: `900.0`s). This optimizes the allocation for a single exposure independent of the catalog exposure times.
 * This optimization assumes that all targets will be finished within a single pointing. Changing the fiber configurations in the middle of a pointing is not considered in this step.
 * **Applying SFA-based spatial uniform sky constraints**: The focal plane is divided into 20 geometric sectors (Laszlo regions), and the solver is strictly penalized (`locationGroupPenalty=1e11`) to enforce that at least 12 sky fibers are assigned to each region. This guarantees a spatially uniform and high-quality sky observation without practically sacrificing any science targets (leveraging the ample surplus of available fibers).
 * Even if the assignment solver (`solve_assignment`) finishes normally or throws an exception, the `try...finally` block **guarantees that the target data's `_obs_time` is restored to its original value**.
@@ -153,6 +153,13 @@ inputs:
   fluxstd_targets: "fluxstd.ecsv"
   sky_targets: "sky.ecsv"
   gaia_catalog: "./cosmos/gaia.ecsv"            # Local Gaia catalog for validation
+
+# Output paths
+outputs:
+  targets_dir: "targets"                     # Target ECSV output folder
+  plot_file: "sky_distribution.png"          # Final target allocation plot
+  fov_plot_file: "fov_coverage.png"           # Output plot for automatic FoV optimization coverage
+  text_output: "output.txt"
 
 # Netflow solver parameters
 netflow:

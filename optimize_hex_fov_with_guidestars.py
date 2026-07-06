@@ -409,6 +409,114 @@ def optimize_fovs_with_guidestars(df_targets, df_gaia, obstime, num_fovs=1,
         
     return pointings, covered
 
+def plot_optimized_fovs(pointings, covered, df_filtered, max_priority, plot_path, obstime):
+    print("Generating plot...")
+    plt.style.use('dark_background')
+    fig, ax = plt.subplots(figsize=(10, 10), dpi=150)
+    fig.patch.set_facecolor('#1e1e24')
+    ax.set_facecolor('#1e1e24')
+    
+    # Plot uncovered targets
+    uncovered_targets = df_filtered[~covered]
+    ax.scatter(uncovered_targets['ra'], uncovered_targets['dec'], 
+               color='#4b5563', alpha=0.3, s=15, label='Uncovered Targets', marker='.')
+               
+    # Plot covered targets
+    for p_idx, p in enumerate(pointings):
+        covered_ids = p['covered_target_ids']
+        df_cov = df_filtered[df_filtered['obj_id'].isin(covered_ids)]
+        ax.scatter(df_cov['ra'], df_cov['dec'], 
+                   alpha=0.8, s=25, label=f"Covered by FoV #{p_idx+1} ({len(df_cov)})")
+                   
+    # Plot Hexagons, Guide Camera footprints, and Guide Stars
+    agcoord = guidecam_geometry()
+    
+    for idx, p in enumerate(pointings):
+        ra_c, dec_c, pa = p['ppc_ra'], p['ppc_dec'], p['ppc_pa']
+        
+        # 1. Hexagon footprint
+        v_ra, v_dec = get_vertices(ra_c, dec_c, R_HEX, pa)
+        poly = patches.Polygon(
+            np.column_stack((v_ra, v_dec)),
+            closed=True, facecolor='#38bdf8', alpha=0.08, zorder=2
+        )
+        ax.add_patch(poly)
+        ax.plot(v_ra, v_dec, color='#38bdf8', linewidth=1.5, linestyle='-', zorder=2)
+        
+        # 2. Guide camera footprints
+        for cam_idx in range(agcoord.shape[0]):
+            cam_pfi = agcoord[cam_idx].T # Shape (2, 4)
+            tmp_sky = ctrans(
+                xyin=cam_pfi,
+                mode="pfi_sky",
+                pa=pa,
+                cent=np.array([ra_c, dec_c]).reshape((2, 1)),
+                time=obstime,
+                epoch=2016.0
+            )
+            v_cam_ra, v_cam_dec = tmp_sky[0, :], tmp_sky[1, :]
+            
+            cam_poly = patches.Polygon(
+                np.column_stack((v_cam_ra, v_cam_dec)),
+                closed=True, facecolor='#22c55e', alpha=0.15, zorder=3
+            )
+            ax.add_patch(cam_poly)
+            ax.plot(v_cam_ra, v_cam_dec, color='#22c55e', linewidth=1.0, linestyle='--', zorder=3)
+            
+            # Label camera id
+            label_ra, label_dec = np.mean(v_cam_ra), np.mean(v_cam_dec)
+            dra = label_ra - ra_c
+            ddec = label_dec - dec_c
+            dist = np.hypot(dra, ddec)
+            if dist > 0:
+                label_ra += (dra / dist) * 0.06
+                label_dec += (ddec / dist) * 0.06
+            ax.text(
+                label_ra, label_dec, f"AG{cam_idx}",
+                color='#22c55e', fontsize=6, fontweight='bold',
+                ha='center', va='center', zorder=4
+            )
+            
+        # 3. Plot selected guide stars
+        stars_df = p['stars_df']
+        if len(stars_df) > 0:
+            ax.scatter(stars_df['ra'], stars_df['dec'], color='#eab308', s=45, marker='*', edgecolors='black', linewidths=0.5, zorder=5, label='Selected Guide Stars' if idx==0 else "")
+            
+        # Center marker and text
+        ax.scatter(ra_c, dec_c, color='#38bdf8', s=40, marker='o', zorder=4)
+        ax.text(
+            ra_c, dec_c + 0.03, f"FoV #{idx+1}\nPA={pa:.1f}°\nGS counts={p['star_counts']}",
+            color='#ffffff', fontsize=8, fontweight='bold',
+            ha='center', va='bottom', zorder=5
+        )
+        
+    ax.set_xlabel('RA (deg)', fontsize=12, color='#ffffff')
+    ax.set_ylabel('Dec (deg)', fontsize=12, color='#ffffff')
+
+    # Calculate coverage statistics per priority level (priority <= max_priority)
+    stats_str = ""
+    priorities = sorted(df_filtered['priority'].unique())
+    for prio in priorities:
+        sub = df_filtered[df_filtered['priority'] == prio]
+        sub_covered = covered[df_filtered['priority'] == prio]
+        cov_count = np.sum(sub_covered)
+        tot_count = len(sub)
+        pct = (100.0 * cov_count / tot_count) if tot_count > 0 else 0.0
+        stats_str += f"P{prio}: {cov_count}/{tot_count} ({pct:.1f}%)   "
+
+    title_text = f'Optimized PFS FoV with Guide Star Constraints\n({len(pointings)} Fields, Priority <= {max_priority})\n{stats_str.strip()}'
+    ax.set_title(title_text, fontsize=12, fontweight='bold', pad=15, color='#ffffff')
+                 
+    ax.grid(True, color='#222230', linestyle='--', alpha=0.5)
+    ax.set_aspect('equal')
+    ax.invert_xaxis()
+    
+    plt.legend(loc='upper right')
+    plt.tight_layout()
+    plt.savefig(plot_path, bbox_inches='tight', dpi=150, facecolor=fig.get_facecolor(), edgecolor='none')
+    plt.close()
+    print(f"Saved plot to {plot_path}")
+
 def main():
     parser = argparse.ArgumentParser(description="Optimize PFS hexagon FoV pointings to maximize target coverage and satisfy guide star constraints")
     parser.add_argument("--input", default="cosmos/targets_all_20260514.csv", help="Input targets CSV file")
@@ -509,100 +617,7 @@ def main():
     print(f"\nTotal targets of priority <= {args.max_priority} covered: {total_covered} / {len(df_filtered)} ({100*total_covered/len(df_filtered):.1f}%)")
     
     # 6. Generate Plot
-    print("Generating plot...")
-    plt.style.use('dark_background')
-    fig, ax = plt.subplots(figsize=(10, 10), dpi=150)
-    fig.patch.set_facecolor('#1e1e24')
-    ax.set_facecolor('#1e1e24')
-    
-    # Plot uncovered targets
-    uncovered_targets = df_filtered[~covered]
-    ax.scatter(uncovered_targets['ra'], uncovered_targets['dec'], 
-               color='#4b5563', alpha=0.3, s=15, label='Uncovered Targets', marker='.')
-               
-    # Plot covered targets
-    for p_idx, p in enumerate(pointings):
-        covered_ids = p['covered_target_ids']
-        df_cov = df_filtered[df_filtered['obj_id'].isin(covered_ids)]
-        ax.scatter(df_cov['ra'], df_cov['dec'], 
-                   alpha=0.8, s=25, label=f"Covered by FoV #{p_idx+1} ({len(df_cov)})")
-                   
-    # Plot Hexagons, Guide Camera footprints, and Guide Stars
-    agcoord = guidecam_geometry()
-    
-    for idx, p in enumerate(pointings):
-        ra_c, dec_c, pa = p['ppc_ra'], p['ppc_dec'], p['ppc_pa']
-        
-        # 1. Hexagon footprint
-        v_ra, v_dec = get_vertices(ra_c, dec_c, R_HEX, pa)
-        poly = patches.Polygon(
-            np.column_stack((v_ra, v_dec)),
-            closed=True, facecolor='#38bdf8', alpha=0.08, zorder=2
-        )
-        ax.add_patch(poly)
-        ax.plot(v_ra, v_dec, color='#38bdf8', linewidth=1.5, linestyle='-', zorder=2)
-        
-        # 2. Guide camera footprints
-        for cam_idx in range(agcoord.shape[0]):
-            cam_pfi = agcoord[cam_idx].T # Shape (2, 4)
-            tmp_sky = ctrans(
-                xyin=cam_pfi,
-                mode="pfi_sky",
-                pa=pa,
-                cent=np.array([ra_c, dec_c]).reshape((2, 1)),
-                time=args.obstime,
-                epoch=2016.0
-            )
-            v_cam_ra, v_cam_dec = tmp_sky[0, :], tmp_sky[1, :]
-            
-            cam_poly = patches.Polygon(
-                np.column_stack((v_cam_ra, v_cam_dec)),
-                closed=True, facecolor='#22c55e', alpha=0.15, zorder=3
-            )
-            ax.add_patch(cam_poly)
-            ax.plot(v_cam_ra, v_cam_dec, color='#22c55e', linewidth=1.0, linestyle='--', zorder=3)
-            
-            # Label camera id (offset outwards from pointing center by 0.06 degrees)
-            label_ra, label_dec = np.mean(v_cam_ra), np.mean(v_cam_dec)
-            dra = label_ra - ra_c
-            ddec = label_dec - dec_c
-            dist = np.hypot(dra, ddec)
-            if dist > 0:
-                label_ra += (dra / dist) * 0.06
-                label_dec += (ddec / dist) * 0.06
-            ax.text(
-                label_ra, label_dec, f"AG{cam_idx}",
-                color='#22c55e', fontsize=6, fontweight='bold',
-                ha='center', va='center', zorder=4
-            )
-            
-        # 3. Plot selected guide stars
-        stars_df = p['stars_df']
-        if len(stars_df) > 0:
-            ax.scatter(stars_df['ra'], stars_df['dec'], color='#eab308', s=45, marker='*', edgecolors='black', linewidths=0.5, zorder=5, label='Selected Guide Stars' if idx==0 else "")
-            
-        # Center marker and text
-        ax.scatter(ra_c, dec_c, color='#38bdf8', s=40, marker='o', zorder=4)
-        ax.text(
-            ra_c, dec_c + 0.03, f"FoV #{idx+1}\nPA={pa:.1f}°\nGS counts={p['star_counts']}",
-            color='#ffffff', fontsize=8, fontweight='bold',
-            ha='center', va='bottom', zorder=5
-        )
-        
-    ax.set_xlabel('RA (deg)', fontsize=12, color='#ffffff')
-    ax.set_ylabel('Dec (deg)', fontsize=12, color='#ffffff')
-    ax.set_title(f'Optimized PFS FoV with Guide Star Constraints\n({args.num_fovs} Fields, Priority <= {args.max_priority})', 
-                 fontsize=14, fontweight='bold', pad=15, color='#ffffff')
-                 
-    ax.grid(True, color='#222230', linestyle='--', alpha=0.5)
-    ax.set_aspect('equal')
-    ax.invert_xaxis()
-    
-    plt.legend(loc='upper right')
-    plt.tight_layout()
-    plt.savefig(args.plot, bbox_inches='tight', dpi=150, facecolor=fig.get_facecolor(), edgecolor='none')
-    plt.close()
-    print(f"Saved plot to {args.plot}")
+    plot_optimized_fovs(pointings, covered, df_filtered, args.max_priority, args.plot, args.obstime)
 
 if __name__ == "__main__":
     main()

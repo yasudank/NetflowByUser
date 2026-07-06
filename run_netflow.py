@@ -93,7 +93,7 @@ if pointing_file is None:
     min_cams_with_stars = pipe_config["netflow"].get("min_cams_with_stars", 6)
     
     # 視野最適化関数の読み込み
-    from optimize_hex_fov_with_guidestars import optimize_fovs_with_guidestars
+    from optimize_hex_fov_with_guidestars import optimize_fovs_with_guidestars, plot_optimized_fovs
     import pandas as pd
     from astropy.table import Table
     
@@ -166,6 +166,10 @@ if pointing_file is None:
     pointing_file = "optimized_pointings.ecsv"
     opt_table.write(pointing_file, format="ascii.ecsv", overwrite=True)
     print(f"FoV optimization completed. Pointings saved to {pointing_file}")
+    
+    # Generate FoV optimization plot
+    fov_plot_file = pipe_config["outputs"].get("fov_plot_file", "fov_coverage.png")
+    plot_optimized_fovs(pointings, covered, df_filtered, max_priority, fov_plot_file, otime)
 
 telescopes = netflow_instrument.getPointingCenter(pointing_file, nvisit, posang, otime)
 
