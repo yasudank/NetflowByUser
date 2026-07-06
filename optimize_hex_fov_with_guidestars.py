@@ -148,6 +148,12 @@ def evaluate_guidestars_single(ra_tel, dec_tel, pa_tel, df_gaia, obstime,
             cam_star_counts.append(0)
             continue
             
+        # Check for bright stars in the exact boundary causing saturation
+        in_exact_all = p.contains_points(cam_xypos)
+        if (df_cam[in_exact_all]["magnitude"] <= min_mag).any():
+            cam_star_counts.append(-999)
+            continue
+            
         # Eliminate close neighbors
         flags_close = flag_close_pairs(df_cam["ra"].values, df_cam["dec"].values, minsep_arcsec / 3600.0)
         df_cam = df_cam[~flags_close]
@@ -186,6 +192,9 @@ def score_pointing(target_count, cam_star_counts, min_stars_per_cam, min_cams_wi
     Compute candidate pointing score based on target coverage and guide star count.
     Score = target_count - 1,000,000 * max(0, min_cams_with_stars - cams_ok)
     """
+    if any(count < 0 for count in cam_star_counts):
+        return -10000000, 0
+        
     cams_ok = sum(1 for count in cam_star_counts if count >= min_stars_per_cam)
     penalty = 1000000 * max(0, min_cams_with_stars - cams_ok)
     return target_count - penalty, cams_ok
