@@ -549,7 +549,7 @@ def generate_pfs_designs(
                 "sfa": {
                     "cobra_coach_dir": ets_fiber_assigner_dir,
                     "dot_margin": p_cfg.get("pfs", {}).get("black_dot_radius_margin", 1.65) if p_cfg else 1.65,
-                    "fill_unassign_radius_check": 1.5,
+                    "fill_unassign_radius_check": 1.5 / 60.0,
                 },
                 "validation": {
                     "save_unassign_toobright": False,
