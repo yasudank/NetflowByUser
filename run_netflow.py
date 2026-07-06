@@ -74,7 +74,13 @@ fscience_targets = resolve_path(catalog_path, pipe_config["inputs"]["science_tar
 fcal_stars = resolve_path(catalog_path, pipe_config["inputs"]["fluxstd_targets"])
 fsky_pos = resolve_path(catalog_path, pipe_config["inputs"]["sky_targets"])
 
-tgt = netflow_io.load_all_targets(fscience_targets, fcal_stars, fsky_pos)
+tgt = netflow_io.load_all_targets(
+    fscience_targets, 
+    fcal_stars, 
+    fsky_pos, 
+    fluxstd_mag_min=pipe_config.get("netflow", {}).get("fluxstd", {}).get("mag_min", 17.0),
+    fluxstd_mag_max=pipe_config.get("netflow", {}).get("fluxstd", {}).get("mag_max", 19.0)
+)
 
 # 3. Setup Instrument (Bench) and Telescopes (Pointing Center)
 black_dot_radius_margin = pipe_config.get("pfs", {}).get("black_dot_radius_margin", 1.65)

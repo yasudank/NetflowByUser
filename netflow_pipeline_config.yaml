@@ -39,6 +39,8 @@ netflow:
   fluxstd:
     num_required: 100
     non_observation_cost: 5000
+    mag_min: 17.0
+    mag_max: 19.0
 
 # Gurobi solver options
 gurobi:

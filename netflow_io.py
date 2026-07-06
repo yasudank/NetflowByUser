@@ -114,10 +114,10 @@ def _fluxstd_cuts(df_fluxstd, mag_min=17.0, mag_max=19.0, prob_threshold=0.5):
     return df_selected
 
 
-def readFluxstdFromECSV(file, targetclass):
+def readFluxstdFromECSV(file, targetclass, mag_min=17.0, mag_max=19.0):
     t = Table.read(file, format="ascii.ecsv")
     df = t.to_pandas()
-    df_selected = _fluxstd_cuts(df)
+    df_selected = _fluxstd_cuts(df, mag_min=mag_min, mag_max=mag_max)
 
     res = []
     for idx, r in df_selected.iterrows():
@@ -164,14 +164,14 @@ def readFluxstdFromECSV(file, targetclass):
     return res
 
 
-def load_all_targets(fscience_targets, fcal_stars, fsky_pos):
+def load_all_targets(fscience_targets, fcal_stars, fsky_pos, fluxstd_mag_min=17.0, fluxstd_mag_max=19.0):
     """Load and merge science, fluxstd, and sky targets."""
     print("Reading science targets...")
     tgt = readScientificFromCSV(fscience_targets, "sci")
     print(f"Done. {len(tgt)} targets are read")
 
     print("Reading fluxstd targets...")
-    tgt += readFluxstdFromECSV(fcal_stars, "cal")
+    tgt += readFluxstdFromECSV(fcal_stars, "cal", mag_min=fluxstd_mag_min, mag_max=fluxstd_mag_max)
     print(f"Done. {len(tgt)} targets are read")
 
     print("Reading sky targets...")
