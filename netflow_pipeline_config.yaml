@@ -36,7 +36,7 @@ netflow:
   sky:
     num_required: 400
     non_observation_cost: 5000
-    min_per_location: 12
+    min_per_location: 15
   fluxstd:
     num_required: 100
     non_observation_cost: 5000

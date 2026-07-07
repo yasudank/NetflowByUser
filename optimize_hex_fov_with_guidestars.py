@@ -420,15 +420,15 @@ def optimize_fovs_with_guidestars(df_targets, df_gaia, obstime, num_fovs=1,
 
 def plot_optimized_fovs(pointings, covered, df_filtered, max_priority, plot_path, obstime):
     print("Generating plot...")
-    plt.style.use('dark_background')
+    plt.style.use('default')
     fig, ax = plt.subplots(figsize=(10, 10), dpi=150)
-    fig.patch.set_facecolor('#1e1e24')
-    ax.set_facecolor('#1e1e24')
+    fig.patch.set_facecolor('white')
+    ax.set_facecolor('white')
     
     # Plot uncovered targets
     uncovered_targets = df_filtered[~covered]
     ax.scatter(uncovered_targets['ra'], uncovered_targets['dec'], 
-               color='#4b5563', alpha=0.3, s=15, label='Uncovered Targets', marker='.')
+               color='#94a3b8', alpha=0.3, s=15, label='Uncovered Targets', marker='.')
                
     # Plot covered targets
     for p_idx, p in enumerate(pointings):
@@ -495,12 +495,12 @@ def plot_optimized_fovs(pointings, covered, df_filtered, max_priority, plot_path
         ax.scatter(ra_c, dec_c, color='#38bdf8', s=40, marker='o', zorder=4)
         ax.text(
             ra_c, dec_c + 0.03, f"FoV #{idx+1}\nPA={pa:.1f}°\nGS counts={p['star_counts']}",
-            color='#ffffff', fontsize=8, fontweight='bold',
+            color='#0f172a', fontsize=8, fontweight='bold',
             ha='center', va='bottom', zorder=5
         )
         
-    ax.set_xlabel('RA (deg)', fontsize=12, color='#ffffff')
-    ax.set_ylabel('Dec (deg)', fontsize=12, color='#ffffff')
+    ax.set_xlabel('RA (deg)', fontsize=12)
+    ax.set_ylabel('Dec (deg)', fontsize=12)
 
     # Calculate coverage statistics per priority level (priority <= max_priority)
     stats_str = ""
@@ -514,9 +514,9 @@ def plot_optimized_fovs(pointings, covered, df_filtered, max_priority, plot_path
         stats_str += f"P{prio}: {cov_count}/{tot_count} ({pct:.1f}%)   "
 
     title_text = f'Optimized PFS FoV with Guide Star Constraints\n({len(pointings)} Fields, Priority <= {max_priority})\n{stats_str.strip()}'
-    ax.set_title(title_text, fontsize=12, fontweight='bold', pad=15, color='#ffffff')
+    ax.set_title(title_text, fontsize=12, fontweight='bold', pad=15)
                  
-    ax.grid(True, color='#222230', linestyle='--', alpha=0.5)
+    ax.grid(True, color='#e2e8f0', linestyle='--', alpha=0.5)
     ax.set_aspect('equal')
     ax.invert_xaxis()
     
