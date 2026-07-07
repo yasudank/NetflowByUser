@@ -9,7 +9,18 @@
 
 ## 0. Preparation
 
-### 0.1 Constructing Virtual Environment
+### 0.1 Gurobi Optimizer License
+
+To run the fiber assignment optimization (Netflow) calculations, the commercial mathematical programming solver **Gurobi Optimizer** is required.
+
+* **License Requirement**: Running Gurobi Optimizer requires obtaining a license key and activating it on your system.
+* **Free Academic License**: If you are affiliated with an academic institution (e.g., a university), you can obtain a **free academic license** from the following page:
+  * [Gurobi Academic License](https://www.gurobi.com/academics)
+* **Activation**: Once you have obtained the license, run the provided `grbgetkey` command to activate and register the license on your environment.
+
+---
+
+### 0.2 Constructing Virtual Environment
 
 A Python virtual environment, resolving PFS-related packages and solver dependencies, can be automatically generated and managed using `create_pfs_env.py` in the same directory.
 
@@ -29,7 +40,7 @@ source .venv/bin/activate
 
 ---
 
-### 0.2 Preparing Calibration Catalog (sky, fluxstd) and Guide Star Catalog (gaia)
+### 0.3 Preparing Calibration Catalog (sky, fluxstd) and Guide Star Catalog (gaia)
 
 Catalogs are fetched from the targetdb via the pfsa server. For each pointing listed in `config_targetdb.toml`'s `input.fn_ppcList`, retrieve the surrounding data. Merge them into a single file using `merge_target_csv.py`.
 
@@ -54,7 +65,7 @@ bash download_data.sh
 
 ---
 
-### 0.3 Database Connection Settings (`db_config.toml`)
+### 0.4 Database Connection Settings (`db_config.toml`)
 
 Credentials and connection details (SSH/PostgreSQL) used during `pfsDesign` generation and database interaction are dynamically loaded from `db_config.toml` rather than being hardcoded in the source code.
 
@@ -63,7 +74,7 @@ Credentials and connection details (SSH/PostgreSQL) used during `pfsDesign` gene
 
 ---
 
-### 0.4 Pointing Optimization (Field-of-View Optimization)
+### 0.5 Pointing Optimization (Field-of-View Optimization)
 
 Optimizes the pointing center coordinates and Position Angle (PA) to cover the maximum number of targets up to the specified priority (default: 2) from the prepared target list while ensuring each guide camera contains at least a specified number of guide stars. The PFS Field of View is assumed to be hexagonal, and Gaia catalog and PFI coordinate transformations are used to evaluate guide star constraints. Results are saved in `optimized_pointings.ecsv`.
 
@@ -75,7 +86,7 @@ If the list of pointings is not specified when running `run_netflow.py`, this sc
 
 ---
 
-### 0.5 Local Pointing Optimization (Local Search)
+### 0.6 Local Pointing Optimization (Local Search)
 
 This script takes an existing list of pointings (e.g., `hexagons_cosmos_flat_centers.ecsv`) and checks whether each coordinate satisfies the guide star constraints (e.g., required number of guide stars, avoidance of excessively bright stars). If a pointing fails the constraints, it searches the local neighborhood (in RA, Dec, PA) to find the closest coordinate that clears the constraints. The optimized list is saved to a new file.
 
