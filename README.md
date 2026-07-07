@@ -73,6 +73,18 @@ python optimize_hex_fov_with_guidestars.py --input ./cosmos/targets_all_20260514
 
 以下の`run_netflow.py`で、観測視野のリストを指定しなかった場合は、このスクリプトが呼び出されて、最適化された視野リストが生成され使用される。
 
+---
+
+### 0.5. 視野の局所最適化（ローカルサーチ）
+
+既存のポインティングリスト（例: `hexagons_cosmos_flat_centers.ecsv`）に対して、各座標でガイド星制約（必要なガイド星の数や、明るすぎる星の除外など）が満たされているかを確認し、満たしていない場合はその座標の周辺（RA, Dec, PA）を探索して制約をクリアできる最も近い座標を探し出します。最適化されたリストは新しいファイルに保存されます。
+
+```bash
+python optimize_hex_fov_local_search.py --input hexagons_cosmos_flat_centers.ecsv --output hexagons_cosmos_flat_centers_opt.ecsv
+```
+
+探索範囲やステップサイズは `--search_radius`, `--search_step`, `--pa_radius`, `--pa_step` 引数で調整可能です。
+
 ## 1. 実行方法
 
 アクティベートした仮想環境の Python を使用して、あるいは作成された `.venv/bin/python` を明示的に指定して、スクリプトを実行します。

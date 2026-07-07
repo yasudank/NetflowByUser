@@ -75,6 +75,18 @@ If the list of pointings is not specified when running `run_netflow.py`, this sc
 
 ---
 
+### 0.5 Local Pointing Optimization (Local Search)
+
+This script takes an existing list of pointings (e.g., `hexagons_cosmos_flat_centers.ecsv`) and checks whether each coordinate satisfies the guide star constraints (e.g., required number of guide stars, avoidance of excessively bright stars). If a pointing fails the constraints, it searches the local neighborhood (in RA, Dec, PA) to find the closest coordinate that clears the constraints. The optimized list is saved to a new file.
+
+```bash
+python optimize_hex_fov_local_search.py --input hexagons_cosmos_flat_centers.ecsv --output hexagons_cosmos_flat_centers_opt.ecsv
+```
+
+The search bounds and step sizes can be adjusted using the `--search_radius`, `--search_step`, `--pa_radius`, and `--pa_step` arguments.
+
+---
+
 ## 1. How to Run
 
 Execute the script using the Python executable of the activated virtual environment, or explicitly specify the path to `.venv/bin/python`.
