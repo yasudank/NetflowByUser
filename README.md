@@ -1,6 +1,8 @@
 # PFS Netflow Pipeline for Classical Observation - run_netflow.py
 
-`run_netflow.py` は、PFS (Prime Focus Spectrograph) のファイバー割り当て最適化計算 (netflow) と、それに続く `pfsDesign` FITS ファイルおよび OPE 観測用制御ファイルの生成・検証を自動で実行するエンドツーエンドのパイプラインスクリプトです。以下の天文台で作成されたプログラムを参考に作成しました。コードのほぼすべては Google Gemini で生成されました。
+PFS (Prime Focus Spectrograph) は非常に複雑な観測装置であり、スムーズな観測遂行には事前の入念な準備が不可欠です。そのため、現状の運用では、観測者は観測ランのかなり前にターゲットリストを観測所に提出し、観測所側でファイバー配置の設計を含めた準備作業を行うことになっています。しかし、観測者自身が自らファイバー配置設計等の事前準備を行えるようになれば、より迅速かつ柔軟な観測運用が可能になります。特に超新星をはじめとする突発天体（トランジエント）の観測においては、天体発見から時間をおかずにタイムリーな観測を実行することが極めて重要です。本プロジェクトは、観測者自らがPFS観測に必要な一連の事前準備（ファイバーアサイン最適化、pfsDesignファイルやOPEファイルの生成・検証）を主体的に行える可能性を探り、運用の柔軟性を高めることを目的として開発されました。
+
+`run_netflow.py` は、PFS のファイバー割り当て最適化計算 (netflow) と、それに続く `pfsDesign` FITS ファイルおよび OPE 観測用制御ファイルの生成・検証を自動で実行するエンドツーエンドのパイプラインスクリプトです。以下の天文台で作成されたプログラムを参考に作成しました。コードのほぼすべては Google Gemini で生成されました。
 * pfs_obsproc_planning_tools: https://github.com/Subaru-PFS/pfs_obsproc_planning_tools
 * ets_pointing: https://github.com/Subaru-PFS/ets_pointing
 * ets_fiberalloc: https://github.com/Subaru-PFS/ets_fiberalloc
