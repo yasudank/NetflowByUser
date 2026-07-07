@@ -84,6 +84,7 @@ python optimize_hex_fov_local_search.py --input hexagons_cosmos_flat_centers.ecs
 ```
 
 探索範囲やステップサイズは `--search_radius`, `--search_step`, `--pa_radius`, `--pa_step` 引数で調整可能です。
+また、`--avoid-gaps` オプションを指定することで、隣接する視野同士に隙間ができないように（理想的な配置間隔から離れすぎないように）ペナルティを課して調整座標を選ぶことができます。
 
 ## 1. 実行方法
 

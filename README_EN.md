@@ -84,6 +84,7 @@ python optimize_hex_fov_local_search.py --input hexagons_cosmos_flat_centers.ecs
 ```
 
 The search bounds and step sizes can be adjusted using the `--search_radius`, `--search_step`, `--pa_radius`, and `--pa_step` arguments.
+Additionally, you can use the `--avoid-gaps` option to apply a penalty to candidates that move away from adjacent pointings, which helps to avoid creating physical gaps in the contiguous grid.
 
 ---
 
