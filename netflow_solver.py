@@ -145,6 +145,7 @@ def solve_assignment(bench, tgt, telescopes, pipe_config):
 
         # Compute observation strategy
         penalty = pipe_config["netflow"].get("locationGroupPenalty", 1e11)
+        min_sky_per_loc = pipe_config["netflow"]["sky"].get("min_per_location", 12)
         prob = nf.buildProblem(bench, tgt, tpos, classdict, t_obs,
                                vis_cost, cobraMoveCost=cobraMoveCost,
                                collision_distance=pipe_config["netflow"]["collision_distance"],
@@ -158,8 +159,8 @@ def solve_assignment(bench, tgt, telescopes, pipe_config):
                                numReservedFibers=num_reserved_fibers,
                                fiberNonAllocationCost=fiber_non_allocation_cost,
                                cobraLocationGroup=cobraRegions,
-                               minSkyTargetsPerLocation=12,
-                               locationGroupPenalty=1e11)
+                               minSkyTargetsPerLocation=min_sky_per_loc,
+                               locationGroupPenalty=penalty)
 
         print("solving the problem")
         prob.solve()
