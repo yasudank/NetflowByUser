@@ -2,23 +2,23 @@
 
 # Common/global settings
 proposal_id: "S26A-104"
-obstime: "2026-05-09T06:00:00Z"
+obstime: "2026-05-09T06:00:00Z"              # [Used by optimize_hex_fov_with_guidestars]
 
 # Input paths
 inputs:
   pointing_file: null
-  catalog_dir: "./cosmos/"
-  science_targets: "targets_all_20260514.csv" # relative to catalog_dir, or absolute
+  catalog_dir: "./cosmos/"                  # [Used by optimize_hex_fov_with_guidestars]
+  science_targets: "targets_all_20260514.csv" # [Used by optimize_hex_fov_with_guidestars] relative to catalog_dir, or absolute
   fluxstd_targets: "fluxstd.ecsv"            # relative to catalog_dir, or absolute
   sky_targets: "sky.ecsv"                    # relative to catalog_dir, or absolute
-  gaia_catalog: "./cosmos/gaia.ecsv"
+  gaia_catalog: "./cosmos/gaia.ecsv"         # [Used by optimize_hex_fov_with_guidestars]
   gaiadb_config: null                        # path to config.toml if using gaiadb for guide stars
 
 # Output paths
 outputs:
   targets_dir: "targets"                     # target ECSV output folder (subfolders science/, fluxstd/, sky/ will be created)
   plot_file: "sky_distribution.png"
-  fov_plot_file: "fov_coverage.png"           # Output plot for automatic FoV optimization coverage
+  fov_plot_file: "fov_coverage.png"           # [Used by optimize_hex_fov_with_guidestars (Output plot)]
   text_output: "output.txt"
 
 # Netflow optimization parameters
@@ -26,10 +26,10 @@ netflow:
   random_seed: 20
   nvisit: 1
   t_obs: 900.0                              # seconds
-  num_fields: 4
-  max_priority: 2
-  min_stars_per_cam: 2                      # Minimum guide stars required per guide camera
-  min_cams_with_stars: 6                    # Minimum number of guide cameras that must meet the min_stars requirement
+  num_fields: 4                             # [Used by optimize_hex_fov_with_guidestars (as num-fovs)]
+  max_priority: 2                            # [Used by optimize_hex_fov_with_guidestars]
+  min_stars_per_cam: 2                      # [Used by optimize_hex_fov_with_guidestars] Minimum guide stars required per guide camera
+  min_cams_with_stars: 6                    # [Used by optimize_hex_fov_with_guidestars] Minimum number of guide cameras that must meet the min_stars requirement
   collision_distance: 2.0
   elbow_collisions: true
   broken_cobras_margin: 1.0
@@ -43,8 +43,8 @@ netflow:
     mag_min: 17.0
     mag_max: 19.0
   guidestars:
-    mag_min: 12.0
-    mag_max: 21.5
+    mag_min: 12.0                           # [Used by optimize_hex_fov_with_guidestars]
+    mag_max: 21.5                           # [Used by optimize_hex_fov_with_guidestars]
 
 # Gurobi solver options
 gurobi:

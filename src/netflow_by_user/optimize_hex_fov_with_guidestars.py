@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 import os
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import warnings
 try:
     from erfa import ErfaWarning
@@ -527,21 +529,89 @@ def plot_optimized_fovs(pointings, covered, df_filtered, max_priority, plot_path
     print(f"Saved plot to {plot_path}")
 
 def main():
+    # 0. Pre-parse config option
+    conf_parser = argparse.ArgumentParser(add_help=False)
+    conf_parser.add_argument("--config", "-c", help="Path to YAML configuration file")
+    args_conf, remaining_argv = conf_parser.parse_known_args()
+
+    defaults = {
+        "input": "cosmos/targets_all_20260514.csv",
+        "gaia_catalog": "cosmos/gaia.ecsv",
+        "obstime": "2026-05-09T06:00:00Z",
+        "min_stars_per_cam": 2,
+        "min_cams_with_stars": 6,
+        "max_priority": 2,
+        "num_fovs": 1,
+        "pa_step": 5.0,
+        "max_gs_checks": 500,
+        "output": "optimized_pointings_with_gs.ecsv",
+        "plot": "optimized_coverage_with_gs.png",
+        "guidestar_mag_min": 12.0,
+        "guidestar_mag_max": 21.5
+    }
+
+    if args_conf.config and os.path.exists(args_conf.config):
+        import yaml
+        print(f"Loading configurations from YAML: {args_conf.config}")
+        with open(args_conf.config, "r") as f:
+            cfg = yaml.safe_load(f)
+        if cfg:
+            # Map YAML fields to defaults
+            cat_dir = cfg.get("inputs", {}).get("catalog_dir", "")
+            sci_tgt = cfg.get("inputs", {}).get("science_targets", "")
+            if sci_tgt:
+                defaults["input"] = os.path.join(cat_dir, sci_tgt) if cat_dir else sci_tgt
+            
+            gaia_cat = cfg.get("inputs", {}).get("gaia_catalog", "")
+            if gaia_cat:
+                defaults["gaia_catalog"] = gaia_cat
+                
+            obstime = cfg.get("obstime", "")
+            if obstime:
+                defaults["obstime"] = obstime
+                
+            netflow_cfg = cfg.get("netflow", {})
+            if "min_stars_per_cam" in netflow_cfg:
+                defaults["min_stars_per_cam"] = netflow_cfg["min_stars_per_cam"]
+            if "min_cams_with_stars" in netflow_cfg:
+                defaults["min_cams_with_stars"] = netflow_cfg["min_cams_with_stars"]
+            if "max_priority" in netflow_cfg:
+                defaults["max_priority"] = netflow_cfg["max_priority"]
+            if "num_fields" in netflow_cfg:
+                defaults["num_fovs"] = netflow_cfg["num_fields"]
+            if "pa_step" in netflow_cfg:
+                defaults["pa_step"] = netflow_cfg["pa_step"]
+            if "max_gs_checks" in netflow_cfg:
+                defaults["max_gs_checks"] = netflow_cfg["max_gs_checks"]
+                
+            outputs_cfg = cfg.get("outputs", {})
+            if "pointing_file" in outputs_cfg:
+                defaults["output"] = outputs_cfg["pointing_file"]
+            if "fov_plot_file" in outputs_cfg:
+                defaults["plot"] = outputs_cfg["fov_plot_file"]
+                
+            gs_cfg = netflow_cfg.get("guidestars", {})
+            if "mag_min" in gs_cfg:
+                defaults["guidestar_mag_min"] = gs_cfg["mag_min"]
+            if "mag_max" in gs_cfg:
+                defaults["guidestar_mag_max"] = gs_cfg["mag_max"]
+
     parser = argparse.ArgumentParser(description="Optimize PFS hexagon FoV pointings to maximize target coverage and satisfy guide star constraints")
-    parser.add_argument("--input", default="cosmos/targets_all_20260514.csv", help="Input targets CSV file")
-    parser.add_argument("--gaia-catalog", default="cosmos/gaia.ecsv", help="Path to local Gaia ECSV catalog for guide stars")
-    parser.add_argument("--obstime", default="2026-05-09T06:00:00Z", help="Observing time in UTC")
-    parser.add_argument("--min-stars-per-cam", type=int, default=2, help="Minimum guide stars per camera")
-    parser.add_argument("--min-cams-with-stars", type=int, default=6, help="Minimum cameras satisfying the requirement")
-    parser.add_argument("--max-priority", type=int, default=2, help="Filter targets with priority <= max_priority")
-    parser.add_argument("--num-fovs", type=int, default=1, help="Number of FoVs to place")
-    parser.add_argument("--pa-step", type=float, default=5.0, help="PA search step size in degrees")
-    parser.add_argument("--max-gs-checks", type=int, default=500, help="Max candidates checked for guide stars")
-    parser.add_argument("--output", default="optimized_pointings_with_gs.ecsv", help="Output ECSV file path")
-    parser.add_argument("--plot", default="optimized_coverage_with_gs.png", help="Output PNG plot path")
-    parser.add_argument("--guidestar-mag-min", type=float, default=12.0, help="Minimum guide star magnitude")
-    parser.add_argument("--guidestar-mag-max", type=float, default=21.5, help="Maximum guide star magnitude")
-    args = parser.parse_args()
+    parser.add_argument("--config", "-c", help="Path to YAML configuration file")
+    parser.add_argument("--input", default=defaults["input"], help="Input targets CSV file")
+    parser.add_argument("--gaia-catalog", default=defaults["gaia_catalog"], help="Path to local Gaia ECSV catalog for guide stars")
+    parser.add_argument("--obstime", default=defaults["obstime"], help="Observing time in UTC")
+    parser.add_argument("--min-stars-per-cam", type=int, default=defaults["min_stars_per_cam"], help="Minimum guide stars per camera")
+    parser.add_argument("--min-cams-with-stars", type=int, default=defaults["min_cams_with_stars"], help="Minimum cameras satisfying the requirement")
+    parser.add_argument("--max-priority", type=int, default=defaults["max_priority"], help="Filter targets with priority <= max_priority")
+    parser.add_argument("--num-fovs", type=int, default=defaults["num_fovs"], help="Number of FoVs to place")
+    parser.add_argument("--pa-step", type=float, default=defaults["pa_step"], help="PA search step size in degrees")
+    parser.add_argument("--max-gs-checks", type=int, default=defaults["max_gs_checks"], help="Max candidates checked for guide stars")
+    parser.add_argument("--output", default=defaults["output"], help="Output ECSV file path")
+    parser.add_argument("--plot", default=defaults["plot"], help="Output PNG plot path")
+    parser.add_argument("--guidestar-mag-min", type=float, default=defaults["guidestar_mag_min"], help="Minimum guide star magnitude")
+    parser.add_argument("--guidestar-mag-max", type=float, default=defaults["guidestar_mag_max"], help="Maximum guide star magnitude")
+    args = parser.parse_args(remaining_argv)
     
     # 1. Read input CSV
     print(f"Reading target file: {args.input}...")

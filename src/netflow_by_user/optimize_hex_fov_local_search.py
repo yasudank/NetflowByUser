@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import argparse
 import numpy as np
 import pandas as pd
@@ -79,22 +80,66 @@ def local_search(ra_center, dec_center, pa_center, df_gaia, obstime,
     return None
 
 def main():
+    # 0. Pre-parse config option
+    conf_parser = argparse.ArgumentParser(add_help=False)
+    conf_parser.add_argument("--config", "-c", help="Path to YAML configuration file")
+    args_conf, remaining_argv = conf_parser.parse_known_args()
+
+    defaults = {
+        "input": None,
+        "output": None,
+        "gaia": "cosmos/gaia.ecsv",
+        "obstime": "2026-05-09T06:00:00Z",
+        "min_stars": 2,
+        "min_cams": 6,
+        "search_radius": 0.1,
+        "search_step": 0.02,
+        "pa_radius": 5.0,
+        "pa_step": 1.0,
+        "avoid_gaps": False
+    }
+
+    if args_conf.config and os.path.exists(args_conf.config):
+        import yaml
+        print(f"Loading configurations from YAML: {args_conf.config}")
+        with open(args_conf.config, "r") as f:
+            cfg = yaml.safe_load(f)
+        if cfg:
+            pointing_file = cfg.get("inputs", {}).get("pointing_file", None)
+            if pointing_file:
+                defaults["input"] = pointing_file
+            
+            gaia_cat = cfg.get("inputs", {}).get("gaia_catalog", "")
+            if gaia_cat:
+                defaults["gaia"] = gaia_cat
+                
+            obstime = cfg.get("obstime", "")
+            if obstime:
+                defaults["obstime"] = obstime
+                
+            netflow_cfg = cfg.get("netflow", {})
+            if "min_stars_per_cam" in netflow_cfg:
+                defaults["min_stars"] = netflow_cfg["min_stars_per_cam"]
+            if "min_cams_with_stars" in netflow_cfg:
+                defaults["min_cams"] = netflow_cfg["min_cams_with_stars"]
+
     parser = argparse.ArgumentParser(description="Local search to satisfy guide star constraints for a pointing list.")
-    parser.add_argument("--input", "-i", required=True, help="Input ECSV file with ppc_ra, ppc_dec, ppc_pa")
-    parser.add_argument("--output", "-o", required=True, help="Output ECSV file")
-    parser.add_argument("--gaia", "-g", default="cosmos/gaia.ecsv", help="Gaia catalog ECSV file")
-    parser.add_argument("--obstime", "-t", default="2026-05-09T06:00:00Z", help="Observation time")
-    parser.add_argument("--min_stars", type=int, default=2, help="Minimum guide stars per camera")
-    parser.add_argument("--min_cams", type=int, default=6, help="Minimum guide cameras with stars")
+    parser.add_argument("--config", "-c", help="Path to YAML configuration file")
+    parser.add_argument("--input", "-i", required=(defaults["input"] is None), default=defaults["input"], help="Input ECSV file with ppc_ra, ppc_dec, ppc_pa")
+    parser.add_argument("--output", "-o", required=(defaults["output"] is None), default=defaults["output"], help="Output ECSV file")
+    parser.add_argument("--gaia", "-g", default=defaults["gaia"], help="Gaia catalog ECSV file")
+    parser.add_argument("--obstime", "-t", default=defaults["obstime"], help="Observation time")
+    parser.add_argument("--min_stars", type=int, default=defaults["min_stars"], help="Minimum guide stars per camera")
+    parser.add_argument("--min_cams", type=int, default=defaults["min_cams"], help="Minimum guide cameras with stars")
     
     # Search parameters
-    parser.add_argument("--search_radius", type=float, default=0.1, help="Spatial search radius (deg)")
-    parser.add_argument("--search_step", type=float, default=0.02, help="Spatial search step (deg)")
-    parser.add_argument("--pa_radius", type=float, default=5.0, help="PA search radius (deg)")
-    parser.add_argument("--pa_step", type=float, default=1.0, help="PA search step (deg)")
-    parser.add_argument("--avoid-gaps", action="store_true", help="Avoid creating gaps between adjacent pointings")
+    parser.add_argument("--search_radius", type=float, default=defaults["search_radius"], help="Spatial search radius (deg)")
+    parser.add_argument("--search_step", type=float, default=defaults["search_step"], help="Spatial search step (deg)")
+    parser.add_argument("--pa_radius", type=float, default=defaults["pa_radius"], help="PA search radius (deg)")
+    parser.add_argument("--pa_step", type=float, default=defaults["pa_step"], help="PA search step (deg)")
+    parser.add_argument("--avoid-gaps", action="store_true", default=defaults["avoid_gaps"], help="Avoid creating gaps between adjacent pointings")
     
-    args = parser.parse_args()
+    args = parser.parse_args(remaining_argv)
     
     print(f"Reading pointings from {args.input}...")
     t_in = Table.read(args.input, format="ascii.ecsv")
