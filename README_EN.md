@@ -81,7 +81,7 @@ Credentials and connection details (SSH/PostgreSQL) used during `pfsDesign` gene
 Optimizes the pointing center coordinates and Position Angle (PA) to cover the maximum number of targets up to the specified priority (default: 2) from the prepared target list while ensuring each guide camera contains at least a specified number of guide stars. The PFS Field of View is assumed to be hexagonal, and Gaia catalog and PFI coordinate transformations are used to evaluate guide star constraints. Results are saved in `optimized_pointings.ecsv`.
 
 ```bash
-python optimize_hex_fov_with_guidestars.py --input ./cosmos/targets_all_20260514.csv --gaia-catalog ./cosmos/gaia.ecsv --max-priority 2 --num-fovs 4
+optimize_hex_fov_with_guidestars --input ./cosmos/targets_all_20260514.csv --gaia-catalog ./cosmos/gaia.ecsv --max-priority 2 --num-fovs 4
 ```
 
 If the list of pointings is not specified when running `run_netflow.py`, this script will be automatically invoked to generate and use the optimized pointing list.
@@ -93,7 +93,7 @@ If the list of pointings is not specified when running `run_netflow.py`, this sc
 This script takes an existing list of pointings (e.g., `hexagons_cosmos_flat_centers.ecsv`) and checks whether each coordinate satisfies the guide star constraints (e.g., required number of guide stars, avoidance of excessively bright stars). If a pointing fails the constraints, it searches the local neighborhood (in RA, Dec, PA) to find the closest coordinate that clears the constraints. The optimized list is saved to a new file.
 
 ```bash
-python optimize_hex_fov_local_search.py --input hexagons_cosmos_flat_centers.ecsv --output hexagons_cosmos_flat_centers_opt.ecsv
+optimize_hex_fov_local_search --input hexagons_cosmos_flat_centers.ecsv --output hexagons_cosmos_flat_centers_opt.ecsv
 ```
 
 The search bounds and step sizes can be adjusted using the `--search_radius`, `--search_step`, `--pa_radius`, and `--pa_step` arguments.
@@ -107,10 +107,10 @@ Execute the script using the Python executable of the activated virtual environm
 
 ```bash
 # Run with the virtual environment activated
-python run_netflow.py --config netflow_pipeline_config.yaml
+run_netflow --config netflow_pipeline_config.yaml
 
 # Or specify the Python interpreter inside the created virtual environment directly
-.venv/bin/python run_netflow.py --config netflow_pipeline_config.yaml
+.venv/bin/run_netflow --config netflow_pipeline_config.yaml
 ```
 
 ### Command-line Arguments

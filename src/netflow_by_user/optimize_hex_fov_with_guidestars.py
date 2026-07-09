@@ -285,7 +285,7 @@ def optimize_fovs_with_guidestars(df_targets, df_gaia, obstime, num_fovs=1,
             # Get guide star counts
             star_counts, stars_df = evaluate_guidestars_single(
                 c_ra, c_dec, c_pa, df_gaia, obstime,
-                min_mag=12.0, max_mag=19.0, minsep_arcsec=1.0
+                min_mag=12.0, max_mag=21.5, minsep_arcsec=1.0
             )
             score, cams_ok = score_pointing(count, star_counts, min_stars_per_cam, min_cams_with_stars)
             

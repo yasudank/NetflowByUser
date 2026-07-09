@@ -188,7 +188,10 @@ def main(engine_b, engine_c):
 # 接続設定ファイルのロード
 db_config_file = os.environ.get(
     "DB_CONFIG_FILE",
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "db_config.toml")
+    os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 
+        "db_config.toml"
+    )
 )
 
 if not os.path.exists(db_config_file):

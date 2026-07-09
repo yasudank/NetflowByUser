@@ -400,6 +400,9 @@ def main():
         else:
             print(f"Adding Gurobi version: {gurobi_ver}")
             install_targets.append((f"gurobipy=={gurobi_ver}", False))
+            
+    # Install the current directory as an editable package so that pyproject.toml scripts are added to bin
+    install_targets.append(("-e .", False))
         
     if not install_targets:
         print("No packages to install.")

@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "netflow-by-user"
+version = "0.1.0"
+description = "PFS Netflow Fiber Assignment Pipeline"
+dependencies = []
+
+[project.scripts]
+run_netflow = "netflow_by_user.run_netflow:main"
+make_pfs_design = "netflow_by_user.make_pfs_design:main"
+optimize_hex_fov = "netflow_by_user.optimize_hex_fov:main"
+optimize_hex_fov_with_guidestars = "netflow_by_user.optimize_hex_fov_with_guidestars:main"
+optimize_hex_fov_local_search = "netflow_by_user.optimize_hex_fov_local_search:main"
+merge_target_csv = "netflow_by_user.merge_target_csv:main"
+check_sky_sectors = "netflow_by_user.check_sky_sectors:main"

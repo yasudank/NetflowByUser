@@ -8,7 +8,7 @@ from gurobipy import GRB
 
 import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
 
 from optimize_hex_fov_with_guidestars import (
     evaluate_candidates_chunk,
