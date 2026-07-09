@@ -99,7 +99,7 @@ def evaluate_candidates_chunk(ra, dec, cand_ra, cand_dec, pa_deg, chunk_size=500
     return covered_counts
 
 def evaluate_guidestars_single(ra_tel, dec_tel, pa_tel, df_gaia, obstime,
-                               min_mag=12.0, max_mag=19.0, minsep_arcsec=1.0):
+                               min_mag=12.0, max_mag=21.5, minsep_arcsec=1.0):
     """
     Evaluate guide star counts in each of the 6 guide cameras for a single pointing.
     Uses the guide star selection algorithm logic.
@@ -202,7 +202,7 @@ def score_pointing(target_count, cam_star_counts, min_stars_per_cam, min_cams_wi
 def optimize_fovs_with_guidestars(df_targets, df_gaia, obstime, num_fovs=1,
                                  min_stars_per_cam=2, min_cams_with_stars=6,
                                  coarse_grid_step=0.03, fine_grid_step=0.002, pa_step=5.0,
-                                 max_gs_checks=500):
+                                 max_gs_checks=500, min_mag=12.0, max_mag=21.5):
     """
     Greedy maximum coverage solver with coarse-to-fine search and guide star constraint optimization
     """
@@ -285,7 +285,7 @@ def optimize_fovs_with_guidestars(df_targets, df_gaia, obstime, num_fovs=1,
             # Get guide star counts
             star_counts, stars_df = evaluate_guidestars_single(
                 c_ra, c_dec, c_pa, df_gaia, obstime,
-                min_mag=12.0, max_mag=21.5, minsep_arcsec=1.0
+                min_mag=min_mag, max_mag=max_mag, minsep_arcsec=1.0
             )
             score, cams_ok = score_pointing(count, star_counts, min_stars_per_cam, min_cams_with_stars)
             
@@ -353,7 +353,7 @@ def optimize_fovs_with_guidestars(df_targets, df_gaia, obstime, num_fovs=1,
                     
                 star_counts, stars_df = evaluate_guidestars_single(
                     f_ra, f_dec, f_pa, df_gaia, obstime,
-                    min_mag=12.0, max_mag=19.0, minsep_arcsec=1.0
+                    min_mag=min_mag, max_mag=max_mag, minsep_arcsec=1.0
                 )
                 score, cams_ok = score_pointing(count, star_counts, min_stars_per_cam, min_cams_with_stars)
                 
@@ -539,6 +539,8 @@ def main():
     parser.add_argument("--max-gs-checks", type=int, default=500, help="Max candidates checked for guide stars")
     parser.add_argument("--output", default="optimized_pointings_with_gs.ecsv", help="Output ECSV file path")
     parser.add_argument("--plot", default="optimized_coverage_with_gs.png", help="Output PNG plot path")
+    parser.add_argument("--guidestar-mag-min", type=float, default=12.0, help="Minimum guide star magnitude")
+    parser.add_argument("--guidestar-mag-max", type=float, default=21.5, help="Maximum guide star magnitude")
     args = parser.parse_args()
     
     # 1. Read input CSV
@@ -607,7 +609,8 @@ def main():
     pointings, covered = optimize_fovs_with_guidestars(
         df_filtered, df_gaia, args.obstime, num_fovs=args.num_fovs,
         min_stars_per_cam=args.min_stars_per_cam, min_cams_with_stars=args.min_cams_with_stars,
-        pa_step=args.pa_step, max_gs_checks=args.max_gs_checks
+        pa_step=args.pa_step, max_gs_checks=args.max_gs_checks,
+        min_mag=args.guidestar_mag_min, max_mag=args.guidestar_mag_max
     )
     
     # 5. Save results to ECSV

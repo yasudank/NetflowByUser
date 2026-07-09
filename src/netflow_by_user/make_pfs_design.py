@@ -409,14 +409,16 @@ def generate_pfs_designs(
                     tmp_csv_path = tmp_f.name
                 
                 try:
+                    gs_mag_min = p_cfg.get("netflow", {}).get("guidestars", {}).get("mag_min", 17.0)
+                    gs_mag_max = p_cfg.get("netflow", {}).get("guidestars", {}).get("mag_max", 21.5)
                     guidestars = designutils.generate_guidestars_from_csv(
                         ra_tel,
                         dec_tel,
                         pa_tel,
                         obstime,
                         conf=config_toml if config_toml else {"sfa": {}},
-                        guidestar_mag_min=12.0,
-                        guidestar_mag_max=19.0,
+                        guidestar_mag_min=gs_mag_min,
+                        guidestar_mag_max=gs_mag_max,
                         guidestar_neighbor_mag_min=21.0,
                         guidestar_minsep_deg=1.0 / 3600,
                         gs_csv=tmp_csv_path
@@ -432,14 +434,16 @@ def generate_pfs_designs(
         elif config_toml and "gaiadb" in config_toml:
             try:
                 print("  Querying guide stars from GaiaDB...")
+                gs_mag_min = p_cfg.get("netflow", {}).get("guidestars", {}).get("mag_min", config_toml.get("sfa", {}).get("guidestar_mag_min", 17.0))
+                gs_mag_max = p_cfg.get("netflow", {}).get("guidestars", {}).get("mag_max", config_toml.get("sfa", {}).get("guidestar_mag_max", 21.5))
                 guidestars = designutils.generate_guidestars_from_gaiadb(
                     ra_tel,
                     dec_tel,
                     pa_tel,
                     obstime,
                     conf=config_toml,
-                    guidestar_mag_min=config_toml.get("sfa", {}).get("guidestar_mag_min", 12.0),
-                    guidestar_mag_max=config_toml.get("sfa", {}).get("guidestar_mag_max", 19.0),
+                    guidestar_mag_min=gs_mag_min,
+                    guidestar_mag_max=gs_mag_max,
                     guidestar_neighbor_mag_min=config_toml.get("sfa", {}).get("guidestar_neighbor_mag_min", 21.0),
                     guidestar_minsep_deg=config_toml.get("sfa", {}).get("guidestar_minsep_deg", 1.0 / 3600),
                 )

@@ -70,7 +70,7 @@ def local_search(ra_center, dec_center, pa_center, df_gaia, obstime,
         
         counts, _ = evaluate_guidestars_single(
             cand_ra, cand_dec, cand_pa, df_gaia, obstime,
-            min_mag=12.0, max_mag=19.0, minsep_arcsec=1.0
+            min_mag=12.0, max_mag=21.5, minsep_arcsec=1.0
         )
         
         if is_valid_pointing(counts, min_stars_per_cam, min_cams_with_stars):
@@ -125,7 +125,7 @@ def main():
         
         counts, _ = evaluate_guidestars_single(
             ra, dec, pa, df_gaia, args.obstime,
-            min_mag=12.0, max_mag=19.0, minsep_arcsec=1.0
+            min_mag=12.0, max_mag=21.5, minsep_arcsec=1.0
         )
         
         if is_valid_pointing(counts, args.min_stars, args.min_cams):

@@ -98,7 +98,7 @@ def get_gaia_star(config, engine, ra, dec, search_radius, frac=0.2):
 
     return df    
 
-def get_guidestar_candidates(config, engine, ra, dec, search_radius, mag_min=12.0, mag_max=19.0):
+def get_guidestar_candidates(config, engine, ra, dec, search_radius, mag_min=12.0, mag_max=21.5):
     tablename = 'gaia3'
     query_string = f"""SELECT source_id, ra, dec, parallax, pmra, pmdec, ref_epoch, phot_g_mean_mag, bp_rp,
                               pmra_error, pmdec_error, parallax_error, astrometric_excess_noise,

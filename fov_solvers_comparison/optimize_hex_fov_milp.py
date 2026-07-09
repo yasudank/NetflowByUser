@@ -8,7 +8,7 @@ from gurobipy import GRB
 
 import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src", "netflow_by_user")))
 
 from optimize_hex_fov_with_guidestars import (
     evaluate_candidates_chunk,
@@ -92,7 +92,7 @@ def optimize_fovs_milp(df_targets, df_gaia, obstime, num_fovs=1,
         # Guide star check
         star_counts, stars_df = evaluate_guidestars_single(
             r_t, d_t, pa, df_gaia, obstime,
-            min_mag=12.0, max_mag=19.0, minsep_arcsec=1.0
+            min_mag=12.0, max_mag=21.5, minsep_arcsec=1.0
         )
         cams_ok = sum(1 for count in star_counts if count >= min_stars_per_cam)
         if cams_ok >= min_cams_with_stars:

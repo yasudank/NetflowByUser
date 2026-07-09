@@ -155,11 +155,14 @@ def main():
                 df_gaia[col] = np.nan
         df_gaia = df_gaia.fillna({"parallax": 1.0e-07, "pmra": 0.0, "pmdec": 0.0})
         
-        print(f"Optimizing for {num_fovs} fields...")
+        gs_config = pipe_config["netflow"].get("guidestars", {})
+        gs_mag_min = gs_config.get("mag_min", 17.0)
+        gs_mag_max = gs_config.get("mag_max", 21.5)
+        print(f"Optimizing for {num_fovs} fields with guide star magnitude range: {gs_mag_min} - {gs_mag_max} mag...")
         pointings, covered = optimize_fovs_with_guidestars(
             df_filtered, df_gaia, otime, num_fovs=num_fovs,
             min_stars_per_cam=min_stars_per_cam, min_cams_with_stars=min_cams_with_stars,
-            pa_step=5.0
+            pa_step=5.0, min_mag=gs_mag_min, max_mag=gs_mag_max
         )
         
         # 結果を ECSV に保存する

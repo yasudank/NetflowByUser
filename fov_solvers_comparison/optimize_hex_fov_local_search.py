@@ -6,7 +6,7 @@ from astropy.table import Table
 
 import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src", "netflow_by_user")))
 
 from optimize_hex_fov_with_guidestars import (
     optimize_fovs_with_guidestars,
@@ -125,7 +125,7 @@ def optimize_fovs_local_search(df_targets, df_gaia, obstime, num_fovs=1,
                             # Verify guide stars
                             star_counts, stars_df = evaluate_guidestars_single(
                                 test_ra, test_dec, test_pa, df_gaia, obstime,
-                                min_mag=12.0, max_mag=19.0, minsep_arcsec=1.0
+                                min_mag=12.0, max_mag=21.5, minsep_arcsec=1.0
                             )
                             cams_ok = sum(1 for count in star_counts if count >= min_stars_per_cam)
                             if cams_ok < min_cams_with_stars:
