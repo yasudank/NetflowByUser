@@ -30,7 +30,9 @@ optimized_coverage.png
 optimized_coverage_with_gs.png
 sky_distribution.png
 output.txt
-
 # OS-specific files
 .DS_Store
-Thumbs.dbsrc/*.egg-info/
+Thumbs.db
+
+# Build/distribution files
+src/*.egg-info/
