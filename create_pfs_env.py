@@ -56,6 +56,70 @@ PACKAGE_MAPPING = {
     }
 }
 
+def apply_validation_patch(venv_dir):
+    """Applies a bugfix patch to validation.py to correctly handle missing fluxes."""
+    import glob
+    search_pattern = os.path.join(venv_dir, "lib", "python3.*", "site-packages", "pfs_obsproc_planning", "utils", "validation.py")
+    matches = glob.glob(search_pattern)
+    if not matches:
+        print("Warning: Could not find validation.py to apply patch.")
+        return
+        
+    validation_file = matches[0]
+    print(f"\nApplying validation.py bugfix patch to: {validation_file}")
+    
+    try:
+        with open(validation_file, "r") as f:
+            content = f.read()
+            
+        old_block = '''        elif t == 1:  # TargetType.SCIENCE
+            if filt is not None and filt in fl:
+                # Preserve the original branching behaviour (note: original used `if not np.nan`)
+                pfsflux_l.append(
+                    a[fl.index(filt)]
+                    if not np.isnan(a[fl.index(filt)])
+                    else b[fl.index(filt)]
+                )
+                pfsflux_f.append(filt)
+            else:
+                indices = [i for i, item in enumerate(fl) if ~np.isin(item, ["none", "nan"])]
+                pfsflux_l.append(
+                    a[indices[0]] if not np.isnan(a[indices[0]]) else b[indices[0]]
+                )
+                pfsflux_f.append(fl[indices[0]])'''
+
+        new_block = '''        elif t == 1:  # TargetType.SCIENCE
+            filt_idx = fl.index(filt) if (filt is not None and filt in fl) else -1
+            if filt_idx >= 0 and not (np.isnan(a[filt_idx]) and np.isnan(b[filt_idx])):
+                pfsflux_l.append(
+                    a[filt_idx] if not np.isnan(a[filt_idx]) else b[filt_idx]
+                )
+                pfsflux_f.append(filt)
+            else:
+                indices = [
+                    i for i, item in enumerate(fl)
+                    if not np.isin(item, ["none", "nan"]) and not (np.isnan(a[i]) and np.isnan(b[i]))
+                ]
+                if len(indices) > 0:
+                    idx = indices[0]
+                    pfsflux_l.append(
+                        a[idx] if not np.isnan(a[idx]) else b[idx]
+                    )
+                    pfsflux_f.append(fl[idx])
+                else:
+                    pfsflux_l.append(np.nan)
+                    pfsflux_f.append("none")'''
+                    
+        if old_block in content:
+            new_content = content.replace(old_block, new_block)
+            with open(validation_file, "w") as f:
+                f.write(new_content)
+            print("Successfully applied patch to validation.py")
+        else:
+            print("Warning: Could not apply patch, target code block not found in validation.py. It might have been already patched or updated upstream.")
+    except Exception as e:
+        print(f"Error applying patch to validation.py: {e}")
+
 def parse_yaml_fallback(file_path):
     """Fallback parser if PyYAML is not installed."""
     pfs_deps = {}
@@ -410,6 +474,7 @@ def main():
             subprocess.run(nodeps_pip_cmd, env=env, check=True)
 
     if not args.dry_run:
+        apply_validation_patch(os.path.abspath(args.venv_dir))
         print("\nVirtual environment setup completed successfully!")
     else:
         print("\nDry-run mode. No changes were made.")
