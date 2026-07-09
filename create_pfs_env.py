@@ -120,6 +120,35 @@ def apply_validation_patch(venv_dir):
     except Exception as e:
         print(f"Error applying patch to validation.py: {e}")
 
+def apply_plot_pfsdesign_patch(venv_dir):
+    """Applies a patch to plot_pfsDesign.py to remove the newline inside the Std star label."""
+    import glob
+    search_pattern = os.path.join(venv_dir, "lib", "python3.*", "site-packages", "pfs_obsproc_planning", "utils", "plot_pfsDesign.py")
+    matches = glob.glob(search_pattern)
+    if not matches:
+        print("Warning: Could not find plot_pfsDesign.py to apply patch.")
+        return
+        
+    plot_file = matches[0]
+    print(f"\nApplying plot_pfsDesign.py patch to: {plot_file}")
+    
+    try:
+        with open(plot_file, "r") as f:
+            content = f.read()
+            
+        old_block = '        label=f"Std star ({filtername_std}, {len(std)}, \\n {proposal_detail})",'
+        new_block = '        label=f"Std star ({filtername_std}, {len(std)}, {proposal_detail})",'
+        
+        if old_block in content:
+            new_content = content.replace(old_block, new_block)
+            with open(plot_file, "w") as f:
+                f.write(new_content)
+            print("Successfully applied patch to plot_pfsDesign.py")
+        else:
+            print("Warning: Could not apply patch to plot_pfsDesign.py, target label block not found.")
+    except Exception as e:
+        print(f"Error applying patch to plot_pfsDesign.py: {e}")
+
 def parse_yaml_fallback(file_path):
     """Fallback parser if PyYAML is not installed."""
     pfs_deps = {}
@@ -478,6 +507,7 @@ def main():
 
     if not args.dry_run:
         apply_validation_patch(os.path.abspath(args.venv_dir))
+        apply_plot_pfsdesign_patch(os.path.abspath(args.venv_dir))
         print("\nVirtual environment setup completed successfully!")
     else:
         print("\nDry-run mode. No changes were made.")
