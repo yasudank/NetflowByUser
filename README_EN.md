@@ -9,6 +9,32 @@ PFS (Prime Focus Spectrograph) is a highly complex instrument, making thorough a
 
 ---
 
+## Quick Start
+
+By executing the following commands in order, you can quickly test the entire pipeline from fiber assignment to `pfsDesign` generation on sample data.
+
+```bash
+# 1. Clone the repository and change directory
+git clone https://github.com/yasudank/NetflowByUser
+cd NetflowByUser/
+
+# 2. Create and activate the virtual environment
+python3 create_pfs_env.py config.yaml
+source .venv/bin/activate
+
+# 3. Download and extract sample data
+sh download_data.sh
+
+# 4. Run the pipeline
+run_netflow
+```
+
+**[Notes]**
+* Running `run_netflow` without arguments automatically loads the settings from `netflow_pipeline_config.yaml` and executes the pipeline.
+* Note: To run the actual optimization calculations, you must have the [Gurobi Optimizer License](#01-gurobi-optimizer-license) configured in advance.
+
+---
+
 ## 0. Preparation
 
 ### 0.1 Gurobi Optimizer License
