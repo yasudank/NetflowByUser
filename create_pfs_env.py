@@ -345,6 +345,44 @@ def resolve_git_ref(package_key, spec, repo_url):
     print(f"-> Resolved '{spec}' to tag '{resolved_tag}'")
     return resolved_tag
 
+def cleanup_bin_directory(venv_dir):
+    """Move non-essential executables in .venv/bin to an extras directory."""
+    import shutil
+    bin_dir = os.path.join(venv_dir, "bin")
+    if not os.path.isdir(bin_dir):
+        return
+        
+    extras_dir = os.path.join(bin_dir, "extras")
+    os.makedirs(extras_dir, exist_ok=True)
+    
+    keep_list = [
+        "python", "python3", "pip", "pip3", "uv", "activate", "activate.csh", "activate.fish", "Activate.ps1",
+        "run_netflow", "make_pfs_design", "optimize_hex_fov", 
+        "optimize_hex_fov_with_guidestars", "optimize_hex_fov_local_search",
+        "merge_target_csv", "check_sky_sectors"
+    ]
+    
+    moved_count = 0
+    for filename in os.listdir(bin_dir):
+        if filename == "extras":
+            continue
+            
+        file_path = os.path.join(bin_dir, filename)
+        
+        # Keep if exactly matches the name, or if it matches python3.X, pip3.X, etc.
+        should_keep = False
+        if filename in keep_list:
+            should_keep = True
+        elif filename.startswith("python3.") or filename.startswith("pip3."):
+            should_keep = True
+            
+        if not should_keep and os.path.isfile(file_path):
+            shutil.move(file_path, os.path.join(extras_dir, filename))
+            moved_count += 1
+            
+    if moved_count > 0:
+        print(f"Cleaned up bin directory: moved {moved_count} extra executables to {extras_dir}")
+
 def main():
     parser = argparse.ArgumentParser(description="Create a python virtual environment with uv based on PFS config dependencies.")
     parser.add_argument("config_file", help="Path to config.yaml (e.g. spt_ssp_observation/runs/2026-07/config.yaml)")
@@ -508,6 +546,7 @@ def main():
     if not args.dry_run:
         apply_validation_patch(os.path.abspath(args.venv_dir))
         apply_plot_pfsdesign_patch(os.path.abspath(args.venv_dir))
+        cleanup_bin_directory(os.path.abspath(args.venv_dir))
         print("\nVirtual environment setup completed successfully!")
     else:
         print("\nDry-run mode. No changes were made.")
