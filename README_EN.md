@@ -126,17 +126,17 @@ If the list of pointings is not specified when running `run_netflow.py`, this sc
 
 ### 0.6 Local Pointing Optimization (Local Search)
 
-This script takes an existing list of pointings (e.g., `hexagons_cosmos_flat_centers.ecsv`) and checks whether each coordinate satisfies the guide star constraints (e.g., required number of guide stars, avoidance of excessively bright stars). If a pointing fails the constraints, it searches the local neighborhood (in RA, Dec, PA) to find the closest coordinate that clears the constraints. The optimized list is saved to a new file.
+This script takes an existing list of pointings (e.g., `cosmos/hexagons_cosmos_flat_centers.ecsv`) and checks whether each coordinate satisfies the guide star constraints (e.g., required number of guide stars, avoidance of excessively bright stars). If a pointing fails the constraints, it searches the local neighborhood (in RA, Dec, PA) to find the closest coordinate that clears the constraints. The optimized list is saved to a new file.
 
 Similarly, you can run this script by loading options from the YAML config file:
 ```bash
 # Load options from the config file and save the optimized list
-optimize_hex_fov_local_search --config netflow_pipeline_config.yaml --output hexagons_cosmos_flat_centers_opt.ecsv
+optimize_hex_fov_local_search --config netflow_pipeline_config.yaml --output cosmos/hexagons_cosmos_flat_centers_opt.ecsv
 ```
 
 Or specify individual arguments manually:
 ```bash
-optimize_hex_fov_local_search --input hexagons_cosmos_flat_centers.ecsv --output hexagons_cosmos_flat_centers_opt.ecsv
+optimize_hex_fov_local_search --input cosmos/hexagons_cosmos_flat_centers.ecsv --output cosmos/hexagons_cosmos_flat_centers_opt.ecsv
 ```
 
 The search bounds and step sizes can be adjusted using the `--search_radius`, `--search_step`, `--pa_radius`, and `--pa_step` arguments.

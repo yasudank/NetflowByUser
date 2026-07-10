@@ -13,7 +13,7 @@ mag_max = 22.5
 
 [input]
 dir = "/mnt/ugnas/work/PFS/work/netflow"
-fn_ppcList = "hexagons_cosmos_flat_centers.ecsv"
+fn_ppcList = "cosmos/hexagons_cosmos_flat_centers.ecsv"
 #fn_ppcList = "optimized_pointings.ecsv"
 
 [output]

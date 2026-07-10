@@ -126,17 +126,17 @@ optimize_hex_fov_with_guidestars --input ./cosmos/targets_all_20260514.csv --gai
 
 ### 0.6. 視野の局所最適化（ローカルサーチ）
 
-既存のポインティングリスト（例: `hexagons_cosmos_flat_centers.ecsv`）に対して、各座標でガイド星制約（必要なガイド星の数や、明るすぎる星の除外など）が満たされているかを確認し、満たしていない場合はその座標の周辺（RA, Dec, PA）を探索して制約をクリアできる最も近い座標を探し出します。最適化されたリストは新しいファイルに保存されます。
+既存のポインティングリスト（例: `cosmos/hexagons_cosmos_flat_centers.ecsv`）に対して、各座標でガイド星制約（必要なガイド星の数や、明るすぎる星の除外など）が満たされているかを確認し、満たしていない場合はその座標の周辺（RA, Dec, PA）を探索して制約をクリアできる最も近い座標を探し出します。最適化されたリストは新しいファイルに保存されます。
 
 こちらも同様に YAML 設定ファイルからオプションを読み込んで実行することができます：
 ```bash
 # 設定ファイルからオプションを読み込み、最適化後のリストを出力する
-optimize_hex_fov_local_search --config netflow_pipeline_config.yaml --output hexagons_cosmos_flat_centers_opt.ecsv
+optimize_hex_fov_local_search --config netflow_pipeline_config.yaml --output cosmos/hexagons_cosmos_flat_centers_opt.ecsv
 ```
 
 あるいは、個別に引数を指定することも可能です：
 ```bash
-optimize_hex_fov_local_search --input hexagons_cosmos_flat_centers.ecsv --output hexagons_cosmos_flat_centers_opt.ecsv
+optimize_hex_fov_local_search --input cosmos/hexagons_cosmos_flat_centers.ecsv --output cosmos/hexagons_cosmos_flat_centers_opt.ecsv
 ```
 
 探索範囲やステップサイズは `--search_radius`, `--search_step`, `--pa_radius`, `--pa_step` 引数で調整可能です。

@@ -36,3 +36,4 @@ Thumbs.db
 
 # Build/distribution files
 src/*.egg-info/
+hexagons_*.ecsv
