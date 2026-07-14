@@ -100,6 +100,7 @@ def add_dummy_targets_for_unassigned_near_bright_stars(bench, telescopes, pipe_c
         cobras_to_dummy = []
         cobras_to_dummy_star_pos = []
         cobras_to_dummy_star_sky = []
+        cobras_to_dummy_star_mag = []
 
         cos_dec_tel = np.cos(np.radians(tel._dec))
         dist_to_center = np.hypot((df_bright['ra'] - tel._ra) * cos_dec_tel, df_bright['dec'] - tel._dec)
@@ -132,6 +133,7 @@ def add_dummy_targets_for_unassigned_near_bright_stars(bench, telescopes, pipe_c
                     cobras_to_dummy.append(cidx)
                     cobras_to_dummy_star_pos.append(bright_pfi[closest_idx])
                     cobras_to_dummy_star_sky.append((bright_ra[closest_idx], bright_dec[closest_idx]))
+                    cobras_to_dummy_star_mag.append(df_bright_near['magnitude'].values[closest_idx])
 
         if not cobras_to_dummy:
             print(f"No unassigned healthy fibers near bright stars for {ppc_code}.")
@@ -155,7 +157,9 @@ def add_dummy_targets_for_unassigned_near_bright_stars(bench, telescopes, pipe_c
 
         new_dummy_rows = []
 
-        for cidx, P_star, (star_ra, star_dec) in zip(cobras_to_dummy, cobras_to_dummy_star_pos, cobras_to_dummy_star_sky):
+        for cidx, P_star, (star_ra, star_dec), star_mag in zip(
+            cobras_to_dummy, cobras_to_dummy_star_pos, cobras_to_dummy_star_sky, cobras_to_dummy_star_mag
+        ):
             C = bench.cobras.centers[cidx]
             r_max = bench.cobras.rMax[cidx]
             r_min = bench.cobras.rMin[cidx]
@@ -242,7 +246,7 @@ def add_dummy_targets_for_unassigned_near_bright_stars(bench, telescopes, pipe_c
 
             # Log details
             detail_log = (f"Cobra {cidx+1} (Fiber {fib}):\n"
-                          f"  Bright Star: RA={star_ra:.5f}, Dec={star_dec:.5f}\n"
+                          f"  Bright Star: RA={star_ra:.5f}, Dec={star_dec:.5f}, Mag={star_mag:.2f}\n"
                           f"  Cobra Center (Initial): PFI ({C.real:.2f}, {C.imag:.2f})\n"
                           f"  Dummy Target (Final):   PFI ({best_P.real:.2f}, {best_P.imag:.2f})\n"
                           f"  Distance (PFI): {init_dist_pfi:.3f} mm -> {final_dist_pfi:.3f} mm (diff: {final_dist_pfi - init_dist_pfi:+.3f} mm)\n"
