@@ -199,6 +199,12 @@ Right before starting the assignment calculation with the netflow solver (Gurobi
 ### (4) Assignment Output and Plotting
 Outputs the mapped target allocations under the `targets/` directory in ECSV format (split into `science`, `fluxstd`, and `sky`), and generates a sky distribution plot image.
 
+* **Dummy Target Assignment for Unassigned Fibers Near Bright Stars (Stage 2)**:
+  After the assignment calculation, healthy unassigned fibers (Cobras) that have a bright star (Gaia G magnitude <= 12.0) within 1.5 arcminutes of their centers are identified. For each of these fibers, a dummy target is automatically positioned within the Cobra's patrol annulus (`r_min + 0.05` to `r_max - 0.05` mm, searched using a polar coordinate grid) such that it does not collide with neighboring fibers (distance to other fibers >= `collision_distance`) and maximizes the distance to the bright star. A new row for the dummy target is then appended to `targets/science/{ppc_code}.ecsv` as if it were assigned to that fiber.
+  - The original science ECSV file is backed up with a `.orig` extension (e.g., `{ppc_code}.ecsv.orig`) for change verification.
+  - A detailed report recording the star distance improvements (initial distance vs. final dummy target distance) is written to `targets/science/dummy_target_improvements.txt`.
+
+
 ### (5) pfsDesign (FITS) / OPE Generation and Validation
 * Calls `make_pfs_design.py` based on the assignment results to generate `pfsDesign` FITS files and `.ope` files for telescope execution.
 * If `pointing_file` in the configuration is `null`, it automatically falls back to referencing the `optimized_pointings.ecsv` generated in step (2).

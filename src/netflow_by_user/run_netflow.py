@@ -11,6 +11,284 @@ from erfa import ErfaWarning
 # Ignore ERFA warnings about distance overridden
 warnings.filterwarnings("ignore", category=ErfaWarning, message=".*distance overridden.*")
 
+def add_dummy_targets_for_unassigned_near_bright_stars(bench, telescopes, pipe_config, exposures_data):
+    import pandas as pd
+    import numpy as np
+    from astropy.table import Table
+    from pfs.utils.coordinates.CoordTransp import CoordinateTransform as ctrans
+    from pfs.utils.fiberids import FiberIds
+
+    # Find the local Gaia catalog path
+    gaia_path = pipe_config["inputs"].get("gaia_catalog", "cosmos/gaia.ecsv")
+    if not os.path.exists(gaia_path):
+        print(f"Warning: Gaia catalog not found at {gaia_path}. Skipping dummy target insertion.")
+        return
+
+    print("Loading Gaia catalog for dummy target verification...")
+    t_gaia = Table.read(gaia_path, format="ascii.ecsv")
+    df_gaia = t_gaia.to_pandas()
+    df_gaia["magnitude"] = df_gaia["phot_g_mean_mag"]
+
+    # Bright star thresholds
+    bright_mag_limit = pipe_config.get("netflow", {}).get("bright_star_mag_limit", 12.0)
+    bright_radius_arcmin = pipe_config.get("netflow", {}).get("bright_star_radius_arcmin", 1.5)
+    radius_deg = bright_radius_arcmin / 60.0
+
+    df_bright = df_gaia[df_gaia["magnitude"] <= bright_mag_limit]
+    if len(df_bright) == 0:
+        print("No bright stars found in catalog. Skipping dummy target insertion.")
+        return
+
+    targets_dir = pipe_config["outputs"]["targets_dir"]
+    pointing_file = pipe_config["inputs"]["pointing_file"]
+    if pointing_file is None:
+        pointing_file = "optimized_pointings.ecsv"
+    ppcList = Table.read(pointing_file, format="ascii.ecsv")
+    ppc_codes = ppcList['ppc_code'].tolist()
+
+    # Load fiber mapping
+    import pfs.utils
+    pfs_utils_dir = os.path.dirname(pfs.utils.__file__)
+    path = os.path.join(pfs_utils_dir, "data", "fiberids")
+    fibId = FiberIds(path)
+
+    # Detailed report data list
+    report_lines = []
+    report_lines.append("Dummy Target Distance Improvement Report\n")
+    report_lines.append("="*80 + "\n")
+
+    for ivis, tel in enumerate(telescopes):
+        ppc_code = ppc_codes[ivis] if ivis < len(ppc_codes) else f"EXP_{ivis+1}"
+        sci_path = os.path.join(targets_dir, "science", f"{ppc_code}.ecsv")
+        if not os.path.exists(sci_path):
+            print(f"Warning: Science target file {sci_path} not found. Skipping...")
+            continue
+
+        # Find assigned cobras in this exposure
+        assigned_cobra_ids = set()
+        for item in exposures_data:
+            if item['ppc_code'] == ppc_code:
+                assigned_cobra_ids.add(item['cobraId'] - 1)
+
+        # Identify healthy unassigned cobras
+        unassigned_healthy_cobras = []
+        for cidx in range(bench.cobras.nCobras):
+            if bench.cobras.isGood[cidx] and cidx not in assigned_cobra_ids:
+                unassigned_healthy_cobras.append(cidx)
+
+        if not unassigned_healthy_cobras:
+            print(f"No unassigned healthy cobras for {ppc_code}.")
+            continue
+
+        # Coordinates of unassigned cobras
+        unassigned_centers = bench.cobras.centers[unassigned_healthy_cobras]
+        unassigned_pfi = np.array([unassigned_centers.real, unassigned_centers.imag])
+
+        # Convert to sky coordinates
+        unassigned_sky = ctrans(
+            xyin=unassigned_pfi,
+            mode="pfi_sky",
+            pa=tel._posang,
+            cent=np.array([tel._ra, tel._dec]).reshape((2, 1)),
+            time=tel._time,
+            epoch=2016.0
+        )
+        unassigned_ra = unassigned_sky[0, :]
+        unassigned_dec = unassigned_sky[1, :]
+
+        # Find unassigned cobras near bright stars
+        cobras_to_dummy = []
+        cobras_to_dummy_star_pos = []
+        cobras_to_dummy_star_sky = []
+
+        cos_dec_tel = np.cos(np.radians(tel._dec))
+        dist_to_center = np.hypot((df_bright['ra'] - tel._ra) * cos_dec_tel, df_bright['dec'] - tel._dec)
+        df_bright_near = df_bright[dist_to_center < 0.8]
+
+        if len(df_bright_near) > 0:
+            bright_ra = df_bright_near['ra'].values
+            bright_dec = df_bright_near['dec'].values
+            bright_sky_coords = np.array([bright_ra, bright_dec])
+            bright_pfi_coords = ctrans(
+                xyin=bright_sky_coords,
+                mode="sky_pfi",
+                pa=tel._posang,
+                cent=np.array([tel._ra, tel._dec]).reshape((2, 1)),
+                pm=np.zeros_like(bright_sky_coords),
+                par=np.zeros(len(bright_ra)),
+                time=tel._time,
+            )
+            bright_pfi = bright_pfi_coords[0, :] + 1j * bright_pfi_coords[1, :]
+
+            cos_dec_un = np.cos(np.radians(unassigned_dec))[:, np.newaxis]
+            d_ra = (unassigned_ra[:, np.newaxis] - bright_ra[np.newaxis, :]) * cos_dec_un
+            d_dec = unassigned_dec[:, np.newaxis] - bright_dec[np.newaxis, :]
+            dist_deg = np.hypot(d_ra, d_dec)
+
+            for i, cidx in enumerate(unassigned_healthy_cobras):
+                near_star_indices = np.where(dist_deg[i] < radius_deg)[0]
+                if len(near_star_indices) > 0:
+                    closest_idx = near_star_indices[np.argmin(dist_deg[i][near_star_indices])]
+                    cobras_to_dummy.append(cidx)
+                    cobras_to_dummy_star_pos.append(bright_pfi[closest_idx])
+                    cobras_to_dummy_star_sky.append((bright_ra[closest_idx], bright_dec[closest_idx]))
+
+        if not cobras_to_dummy:
+            print(f"No unassigned healthy fibers near bright stars for {ppc_code}.")
+            continue
+
+        print(f"Found {len(cobras_to_dummy)} unassigned fibers near bright stars for {ppc_code}. Generating dummy targets...")
+        report_lines.append(f"\nExposure/Pointing: {ppc_code}\n")
+        report_lines.append("-" * 40 + "\n")
+
+        # Initialize current fiber positions for all cobras
+        fiber_pos = np.zeros(bench.cobras.nCobras, dtype=complex)
+        for item in exposures_data:
+            if item['ppc_code'] == ppc_code:
+                fiber_pos[item['cobraId'] - 1] = item['pfi_X'] + 1j * item['pfi_Y']
+        for cidx in range(bench.cobras.nCobras):
+            if cidx not in assigned_cobra_ids:
+                fiber_pos[cidx] = bench.cobras.centers[cidx]
+
+        collision_distance = pipe_config.get("netflow", {}).get("collision_distance", 2.0)
+        safe_collision_distance = collision_distance + 0.1
+
+        new_dummy_rows = []
+
+        for cidx, P_star, (star_ra, star_dec) in zip(cobras_to_dummy, cobras_to_dummy_star_pos, cobras_to_dummy_star_sky):
+            C = bench.cobras.centers[cidx]
+            r_max = bench.cobras.rMax[cidx]
+            r_min = bench.cobras.rMin[cidx]
+            neighbors = bench.getCobraNeighbors(cidx)
+
+            best_P = None
+            max_dist_to_star = -1.0
+
+            # Grid search - restrict to r_max - 0.05 to avoid floating point patrol region warnings in validation
+            radii = np.linspace(r_max - 0.05, r_min + 0.05, 10)
+            v_star = P_star - C
+            angle_opposite = np.angle(-v_star)
+            angles = angle_opposite + np.linspace(-np.pi, np.pi, 72, endpoint=False)
+
+            for r_test in radii:
+                for angle in angles:
+                    P_test = C + r_test * np.exp(1j * angle)
+                    has_collision = False
+                    for n_cidx in neighbors:
+                        if np.abs(P_test - fiber_pos[n_cidx]) < safe_collision_distance:
+                            has_collision = True
+                            break
+                    if not has_collision:
+                        d_star = np.abs(P_test - P_star)
+                        if d_star > max_dist_to_star:
+                            max_dist_to_star = d_star
+                            best_P = P_test
+
+            if best_P is None:
+                # Retry with exact collision distance
+                for r_test in radii:
+                    for angle in angles:
+                        P_test = C + r_test * np.exp(1j * angle)
+                        has_collision = False
+                        for n_cidx in neighbors:
+                            if np.abs(P_test - fiber_pos[n_cidx]) < collision_distance:
+                                has_collision = True
+                                break
+                        if not has_collision:
+                            d_star = np.abs(P_test - P_star)
+                            if d_star > max_dist_to_star:
+                                max_dist_to_star = d_star
+                                best_P = P_test
+
+            if best_P is None:
+                print(f"  Warning: could not find collision-free position for cobra {cidx+1}. Fallback to cobra center.")
+                best_P = C
+                max_dist_to_star = np.abs(C - P_star)
+
+            # Update fiber_pos
+            fiber_pos[cidx] = best_P
+
+            # Convert best_P to sky coordinates
+            dummy_sky = ctrans(
+                xyin=np.array([[best_P.real], [best_P.imag]]),
+                mode="pfi_sky",
+                pa=tel._posang,
+                cent=np.array([tel._ra, tel._dec]).reshape((2, 1)),
+                time=tel._time,
+                epoch=2016.0
+            )
+            ra_dummy = dummy_sky[0, 0]
+            dec_dummy = dummy_sky[1, 0]
+
+            # Calculate separations
+            init_dist_pfi = np.abs(C - P_star)
+            final_dist_pfi = np.abs(best_P - P_star)
+
+            # Sky separation (arcsec)
+            init_dist_sky = np.hypot(
+                (unassigned_ra[unassigned_healthy_cobras.index(cidx)] - star_ra) * np.cos(np.deg2rad(star_dec)),
+                unassigned_dec[unassigned_healthy_cobras.index(cidx)] - star_dec
+            ) * 3600.0
+            final_dist_sky = np.hypot(
+                (ra_dummy - star_ra) * np.cos(np.deg2rad(star_dec)),
+                dec_dummy - star_dec
+            ) * 3600.0
+
+            # Find fiber ID (pass as list to avoid 0D array indexing error)
+            try:
+                fib = fibId.cobraIdToFiberId([cidx + 1])[0]
+            except Exception:
+                fib = "N/A"
+
+            # Log details
+            detail_log = (f"Cobra {cidx+1} (Fiber {fib}):\n"
+                          f"  Bright Star: RA={star_ra:.5f}, Dec={star_dec:.5f}\n"
+                          f"  Cobra Center (Initial): PFI ({C.real:.2f}, {C.imag:.2f})\n"
+                          f"  Dummy Target (Final):   PFI ({best_P.real:.2f}, {best_P.imag:.2f})\n"
+                          f"  Distance (PFI): {init_dist_pfi:.3f} mm -> {final_dist_pfi:.3f} mm (diff: {final_dist_pfi - init_dist_pfi:+.3f} mm)\n"
+                          f"  Distance (Sky): {init_dist_sky:.1f} arcsec -> {final_dist_sky:.1f} arcsec (diff: {final_dist_sky - init_dist_sky:+.1f} arcsec)\n")
+            print(detail_log)
+            report_lines.append(detail_log + "\n")
+
+            new_dummy_rows.append({
+                'ob_code': f"dummy_{cidx+1}_{ppc_code}",
+                'obj_id': 999000000 + cidx,
+                'ra': ra_dummy,
+                'dec': dec_dummy,
+                'exptime': 3600.0,
+                'priority': 4,
+                'resolution': 'L',
+                'r2_hsc': np.nan,
+                'i2_hsc': np.nan,
+                'z_hsc': np.nan,
+                'reference_arm': "",
+                'g_hsc': np.nan,
+                'cobraId': cidx + 1,
+                'pfi_X': best_P.real,
+                'pfi_Y': best_P.imag
+            })
+
+        if new_dummy_rows:
+            t_sci = Table.read(sci_path, format="ascii.ecsv")
+            orig_path = sci_path + ".orig"
+            if not os.path.exists(orig_path):
+                t_sci.write(orig_path, format="ascii.ecsv", overwrite=True)
+                print(f"  Saved original science target file to {orig_path}")
+
+            for row in new_dummy_rows:
+                row_dict = {}
+                for col in t_sci.colnames:
+                    row_dict[col] = row.get(col, None)
+                t_sci.add_row(row_dict)
+            t_sci.write(sci_path, format="ascii.ecsv", overwrite=True)
+            print(f"  Saved updated science target file with dummy targets to {sci_path}")
+
+    # Write report file
+    report_path = os.path.join(targets_dir, "science", "dummy_target_improvements.txt")
+    with open(report_path, "w") as f_rep:
+        f_rep.writelines(report_lines)
+    print(f"Written detailed improvements report to {report_path}")
+
 def main():
     # 1. Parse configuration file path
     parser = argparse.ArgumentParser(description="Run netflow fiber assignment.")
@@ -217,6 +495,11 @@ def main():
     # 6. Match targets and save ECSV files under target directories
     netflow_io.save_targets_ecsv(
         exposures_data, fscience_targets, fcal_stars, fsky_pos, pipe_config["outputs"]["targets_dir"]
+    )
+
+    # 6b. Add dummy targets to unassigned fibers near bright stars
+    add_dummy_targets_for_unassigned_near_bright_stars(
+        bench, telescopes, pipe_config, exposures_data
     )
 
     # 7. Plot sky distribution
