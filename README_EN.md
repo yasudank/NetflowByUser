@@ -185,6 +185,7 @@ Loads the specified configuration files (YAML/TOML) to identify the observing pr
 ### (2) Automatic Pointing Optimization (FoV Optimization)
 If `inputs.pointing_file` in the configuration file is `null`, the **automatic pointing optimization feature** is automatically triggered.
 * Using the guide-star-constrained greedy maximum coverage algorithm in `optimize_hex_fov_with_guidestars.py`, it searches for the center coordinates and position angle (PA) of the fields to most efficiently cover target stars satisfying `priority <= max_priority`, while ensuring each of the 6 guide cameras contains a sufficient number of guide stars (defaulting to $\ge 2$ stars per camera).
+* **Bright Star Avoidance Constraint around Broken Fibers**: If there are bright stars near unassigned broken fibers (fibers that are fixed and cannot be moved, i.e., `isGood == False`), validation will throw errors. To prevent this, a constraint is integrated into the optimization that automatically penalizes and avoids candidate pointings that place a bright star (Gaia G magnitude <= 12.0) within 1.5 arcminutes of any broken fiber's position.
 * It calculates the pointing information for the specified number of fields (`num_fields`) and automatically saves it as `optimized_pointings.ecsv`, which is used as the input pointing list for subsequent steps.
 
 ### (3) Temporary Exposure Time Overwrite and Assignment Calculation
@@ -237,4 +238,6 @@ netflow:
   max_priority: 2                            # Maximum priority to consider for auto-optimization (smaller is higher priority)
   min_stars_per_cam: 2                       # Minimum guide stars required per guide camera
   min_cams_with_stars: 6                     # Minimum number of guide cameras that must meet the min_stars requirement
+  bright_star_mag_limit: 12.0                # Bright star magnitude threshold to avoid near broken fibers (default: 12.0)
+  bright_star_radius_arcmin: 1.5             # Avoidance radius near broken fibers in arcminutes (default: 1.5)
 ```

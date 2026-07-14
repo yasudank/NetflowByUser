@@ -201,13 +201,82 @@ def score_pointing(target_count, cam_star_counts, min_stars_per_cam, min_cams_wi
     penalty = 1000000 * max(0, min_cams_with_stars - cams_ok)
     return target_count - penalty, cams_ok
 
+def check_bright_stars_near_broken_fibers(c_ra, c_dec, c_pa, df_gaia, obstime, bench, radius_deg=1.5/60.0, max_mag=12.0):
+    """
+    Check if there are any bright stars (G magnitude <= max_mag) near the broken fibers.
+    Returns True if a bright star is too close (invalid pointing), False otherwise.
+    """
+    if bench is None:
+        return False
+        
+    broken_centers = bench.cobras.centers[~bench.cobras.isGood]
+    if len(broken_centers) == 0:
+        return False
+        
+    mag_col = 'magnitude' if 'magnitude' in df_gaia.columns else ('phot_g_mean_mag' if 'phot_g_mean_mag' in df_gaia.columns else None)
+    if mag_col is None:
+        return False
+        
+    df_bright = df_gaia[df_gaia[mag_col] <= max_mag]
+    if len(df_bright) == 0:
+        return False
+        
+    # Calculate sky coordinates of broken fibers
+    broken_pfi = np.array([broken_centers.real, broken_centers.imag])
+    
+    broken_sky = ctrans(
+        xyin=broken_pfi,
+        mode="pfi_sky",
+        pa=c_pa,
+        cent=np.array([c_ra, c_dec]).reshape((2, 1)),
+        time=obstime,
+        epoch=2016.0
+    )
+    broken_ra = broken_sky[0, :]
+    broken_dec = broken_sky[1, :]
+    
+    # Pre-filter df_bright to stars within ~0.8 degrees of c_ra, c_dec
+    cos_dec_tel = np.cos(np.radians(c_dec))
+    dist_to_center = np.hypot((df_bright['ra'] - c_ra) * cos_dec_tel, df_bright['dec'] - c_dec)
+    df_bright_near = df_bright[dist_to_center < 0.8]
+    if len(df_bright_near) == 0:
+        return False
+        
+    bright_ra = df_bright_near['ra'].values
+    bright_dec = df_bright_near['dec'].values
+    
+    cos_dec = np.cos(np.radians(broken_dec))[:, np.newaxis]
+    d_ra = (broken_ra[:, np.newaxis] - bright_ra[np.newaxis, :]) * cos_dec
+    d_dec = broken_dec[:, np.newaxis] - bright_dec[np.newaxis, :]
+    dist = np.hypot(d_ra, d_dec)
+    
+    if (dist < radius_deg).any():
+        return True # Too close!
+        
+    return False
+
 def optimize_fovs_with_guidestars(df_targets, df_gaia, obstime, num_fovs=1,
                                  min_stars_per_cam=2, min_cams_with_stars=6,
                                  coarse_grid_step=0.03, fine_grid_step=0.002, pa_step=5.0,
-                                 max_gs_checks=500, min_mag=12.0, max_mag=21.5):
+                                 max_gs_checks=500, min_mag=12.0, max_mag=21.5,
+                                 bench=None, bright_star_mag_limit=12.0, bright_star_radius_arcmin=1.5):
     """
     Greedy maximum coverage solver with coarse-to-fine search and guide star constraint optimization
     """
+    if bench is None:
+        try:
+            import netflow_instrument
+            bench = netflow_instrument.getBench()
+        except Exception as e:
+            print(f"Warning: could not initialize bench dynamically in optimize_fovs_with_guidestars: {e}")
+            bench = None
+
+    if bench is not None:
+        broken_centers = bench.cobras.centers[~bench.cobras.isGood]
+        print(f"FoV optimizer: using bench with {len(broken_centers)} broken cobras.")
+    else:
+        print("FoV optimizer: bench is not available. Skipping bright-star broken fiber constraint.")
+
     ra = df_targets['ra'].values
     dec = df_targets['dec'].values
     ids = df_targets['obj_id'].values
@@ -284,12 +353,21 @@ def optimize_fovs_with_guidestars(df_targets, df_gaia, obstime, num_fovs=1,
         for cand in candidates_list[:max_gs_checks]:
             c_ra, c_dec, c_pa, count = cand['ra'], cand['dec'], cand['pa'], cand['count']
             
-            # Get guide star counts
-            star_counts, stars_df = evaluate_guidestars_single(
-                c_ra, c_dec, c_pa, df_gaia, obstime,
-                min_mag=min_mag, max_mag=max_mag, minsep_arcsec=1.0
-            )
-            score, cams_ok = score_pointing(count, star_counts, min_stars_per_cam, min_cams_with_stars)
+            # Check for bright star near broken fibers
+            if check_bright_stars_near_broken_fibers(c_ra, c_dec, c_pa, df_gaia, obstime, bench,
+                                                     radius_deg=bright_star_radius_arcmin/60.0,
+                                                     max_mag=bright_star_mag_limit):
+                score = -20000000
+                cams_ok = 0
+                star_counts = [0] * 6
+                stars_df = pd.DataFrame()
+            else:
+                # Get guide star counts
+                star_counts, stars_df = evaluate_guidestars_single(
+                    c_ra, c_dec, c_pa, df_gaia, obstime,
+                    min_mag=min_mag, max_mag=max_mag, minsep_arcsec=1.0
+                )
+                score, cams_ok = score_pointing(count, star_counts, min_stars_per_cam, min_cams_with_stars)
             
             if score > best_score:
                 best_score = score
@@ -353,11 +431,20 @@ def optimize_fovs_with_guidestars(df_targets, df_gaia, obstime, num_fovs=1,
                 if best_cams_ok >= min_cams_with_stars and count < best_target_count:
                     break
                     
-                star_counts, stars_df = evaluate_guidestars_single(
-                    f_ra, f_dec, f_pa, df_gaia, obstime,
-                    min_mag=min_mag, max_mag=max_mag, minsep_arcsec=1.0
-                )
-                score, cams_ok = score_pointing(count, star_counts, min_stars_per_cam, min_cams_with_stars)
+                # Check for bright star near broken fibers
+                if check_bright_stars_near_broken_fibers(f_ra, f_dec, f_pa, df_gaia, obstime, bench,
+                                                         radius_deg=bright_star_radius_arcmin/60.0,
+                                                         max_mag=bright_star_mag_limit):
+                    score = -20000000
+                    cams_ok = 0
+                    star_counts = [0] * 6
+                    stars_df = pd.DataFrame()
+                else:
+                    star_counts, stars_df = evaluate_guidestars_single(
+                        f_ra, f_dec, f_pa, df_gaia, obstime,
+                        min_mag=min_mag, max_mag=max_mag, minsep_arcsec=1.0
+                    )
+                    score, cams_ok = score_pointing(count, star_counts, min_stars_per_cam, min_cams_with_stars)
                 
                 if score > best_score:
                     print(f"  Local refinement improved score: target count {best_target_count} -> {count}, cams ok {best_cams_ok} -> {cams_ok}")
@@ -547,7 +634,9 @@ def main():
         "output": "optimized_pointings_with_gs.ecsv",
         "plot": "optimized_coverage_with_gs.png",
         "guidestar_mag_min": 12.0,
-        "guidestar_mag_max": 21.5
+        "guidestar_mag_max": 21.5,
+        "bright_star_mag_limit": 12.0,
+        "bright_star_radius_arcmin": 1.5
     }
 
     if args_conf.config and os.path.exists(args_conf.config):
@@ -595,6 +684,10 @@ def main():
                 defaults["guidestar_mag_min"] = gs_cfg["mag_min"]
             if "mag_max" in gs_cfg:
                 defaults["guidestar_mag_max"] = gs_cfg["mag_max"]
+            if "bright_star_mag_limit" in netflow_cfg:
+                defaults["bright_star_mag_limit"] = netflow_cfg["bright_star_mag_limit"]
+            if "bright_star_radius_arcmin" in netflow_cfg:
+                defaults["bright_star_radius_arcmin"] = netflow_cfg["bright_star_radius_arcmin"]
 
     parser = argparse.ArgumentParser(description="Optimize PFS hexagon FoV pointings to maximize target coverage and satisfy guide star constraints")
     parser.add_argument("--config", "-c", help="Path to YAML configuration file")
@@ -611,6 +704,8 @@ def main():
     parser.add_argument("--plot", default=defaults["plot"], help="Output PNG plot path")
     parser.add_argument("--guidestar-mag-min", type=float, default=defaults["guidestar_mag_min"], help="Minimum guide star magnitude")
     parser.add_argument("--guidestar-mag-max", type=float, default=defaults["guidestar_mag_max"], help="Maximum guide star magnitude")
+    parser.add_argument("--bright-star-mag-limit", type=float, default=defaults["bright_star_mag_limit"], help="Bright star magnitude limit to avoid around broken fibers")
+    parser.add_argument("--bright-star-radius-arcmin", type=float, default=defaults["bright_star_radius_arcmin"], help="Radius in arcminutes to avoid bright stars around broken fibers")
     args = parser.parse_args(remaining_argv)
     
     # 1. Read input CSV
@@ -680,7 +775,9 @@ def main():
         df_filtered, df_gaia, args.obstime, num_fovs=args.num_fovs,
         min_stars_per_cam=args.min_stars_per_cam, min_cams_with_stars=args.min_cams_with_stars,
         pa_step=args.pa_step, max_gs_checks=args.max_gs_checks,
-        min_mag=args.guidestar_mag_min, max_mag=args.guidestar_mag_max
+        min_mag=args.guidestar_mag_min, max_mag=args.guidestar_mag_max,
+        bright_star_mag_limit=args.bright_star_mag_limit,
+        bright_star_radius_arcmin=args.bright_star_radius_arcmin
     )
     
     # 5. Save results to ECSV

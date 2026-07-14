@@ -160,10 +160,16 @@ def main():
         gs_mag_min = gs_config.get("mag_min", 17.0)
         gs_mag_max = gs_config.get("mag_max", 21.5)
         print(f"Optimizing for {num_fovs} fields with guide star magnitude range: {gs_mag_min} - {gs_mag_max} mag...")
+        bright_mag_limit = pipe_config.get("netflow", {}).get("bright_star_mag_limit", 12.0)
+        bright_radius_arcmin = pipe_config.get("netflow", {}).get("bright_star_radius_arcmin", 1.5)
+        
         pointings, covered = optimize_fovs_with_guidestars(
             df_filtered, df_gaia, otime, num_fovs=num_fovs,
             min_stars_per_cam=min_stars_per_cam, min_cams_with_stars=min_cams_with_stars,
-            pa_step=5.0, min_mag=gs_mag_min, max_mag=gs_mag_max
+            pa_step=5.0, min_mag=gs_mag_min, max_mag=gs_mag_max,
+            bench=bench,
+            bright_star_mag_limit=bright_mag_limit,
+            bright_star_radius_arcmin=bright_radius_arcmin
         )
         
         # 結果を ECSV に保存する

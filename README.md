@@ -183,6 +183,7 @@ run_netflow --config netflow_pipeline_config.yaml
 ### ② 視野 (Pointing) の自動最適化 (FoV Optimization)
 設定ファイルの `inputs.pointing_file` が `null` の場合、**視野自動最適化機能**が自動的にトリガーされます。
 * `optimize_hex_fov_with_guidestars.py` 内のアルゴリズム（ガイド星制約付き Greedy Maximum Coverage）を使用し、ロードされた `science_targets` のうち `priority <= max_priority` を満たすターゲット天体を最も効率よくカバーしつつ、6つのガイドカメラそれぞれに十分な数（デフォルト: 各2つ以上）のガイド星が入るように視野の中心座標と回転角 (PA) を探索・最適化します。
+* **故障ファイバー（Broken Fiber）近傍の明るい星の回避制約**: アサインされずに未アサインとなる broken ファイバー（固定されて動かすことのできない `isGood == False` のファイバー）の周囲に明るい星があると、バリデーションエラーとなります。これを避けるため、最適化時にあらかじめ broken ファイバーの周囲 1.5分角以内に Gaia G等級が 12.0 以下の明るい星が入るようなポインティング（視野設定）を自動的にペナルティを課して回避する制約が組み込まれています。
 * 指定された視野数 (`num_fields`) のポインティング情報を算出し、自動的に `optimized_pointings.ecsv` として保存します。このファイルが後続の処理の入力ポインティングとなります。
 
 ### ③ 露出時間の一時上書きとアサイン計算
@@ -235,6 +236,8 @@ netflow:
   max_priority: 2                            # ポインティング自動最適化で考慮する最大優先度 (小さい値ほど高優先)
   min_stars_per_cam: 2                       # 1つのガイドカメラ内に必要なガイド星の最小数
   min_cams_with_stars: 6                     # min_stars_per_cam の条件を満たすべきガイドカメラの最小数（最大6）
+  bright_star_mag_limit: 12.0                # 故障ファイバー近傍で回避すべき明るい星のG等級閾値（デフォルト: 12.0）
+  bright_star_radius_arcmin: 1.5             # 故障ファイバー近傍で回避すべき半径（分角、デフォルト: 1.5）
 ```
 
 ---
