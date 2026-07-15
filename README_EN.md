@@ -70,16 +70,22 @@ source .venv/bin/activate
 
 ### 0.3 Preparing Calibration Catalog (sky, fluxstd) and Guide Star Catalog (gaia)
 
-Catalogs are fetched from the targetdb via the pfsa server. For each pointing listed in `config_targetdb.toml`'s `input.fn_ppcList`, retrieve the surrounding data. Merge them into a single file using `merge_target_csv.py`.
+The sky and fluxstd catalogs are fetched from targetdb using `targetdb_calib.py`.
+The Gaia guide star catalog is queried online from the public ESA Gaia Archive using `query_gaia_public.py`.
+
+For each pointing listed in `config_targetdb_cosmos.toml`'s `input.fn_ppcList`, these scripts retrieve the surrounding data, which are then merged into a single file using `merge_target_csv.py`.
 
 ```bash
-# Retrieve data from the remote catalog server
-python get_targetdb_cat.py config_targetdb_cosmos.toml
+# Retrieve sky and fluxstd data from targetdb (via SSH tunnel)
+python src/netflow_by_user/targetdb_calib.py config_targetdb_cosmos.toml
+
+# Query gaia guide stars from the public Gaia Archive (no SSH tunnel required)
+python src/netflow_by_user/query_gaia_public.py config_targetdb_cosmos.toml
 
 # Merge the retrieved data
-python merge_target_csv.py ./cosmos/sky
-python merge_target_csv.py ./cosmos/fluxstd
-python merge_target_csv.py ./cosmos/gaia
+python src/netflow_by_user/merge_target_csv.py ./cosmos/sky
+python src/netflow_by_user/merge_target_csv.py ./cosmos/fluxstd
+python src/netflow_by_user/merge_target_csv.py ./cosmos/gaia
 ```
 
 For the COSMOS and XMM_LSS regions (LSST Deep Drilling Fields), the data necessary for covering with 7 PFS pointings has already been downloaded (under `./cosmos` and `./xmm_lss` directories) and can be used as-is.
