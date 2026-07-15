@@ -8,7 +8,7 @@ import pandas as pd
 from astropy.table import Table
 from tqdm import tqdm
 
-from optimize_hex_fov_with_guidestars import evaluate_guidestars_single
+from optimize_hex_fov_with_guidestars import evaluate_guidestars_single, check_bright_stars_near_broken_fibers
 
 def is_valid_pointing(cam_star_counts, min_stars_per_cam=2, min_cams_with_stars=6):
     """Check if the pointing satisfies the guide star constraints."""
@@ -23,7 +23,8 @@ def local_search(ra_center, dec_center, pa_center, df_gaia, obstime,
                  min_stars_per_cam=2, min_cams_with_stars=6,
                  ra_range=0.1, dec_range=0.1, pa_range=5.0,
                  pos_step=0.02, pa_step=1.0,
-                 avoid_gaps=False, all_pointings=None, current_idx=-1):
+                 avoid_gaps=False, all_pointings=None, current_idx=-1,
+                 bench=None, bright_star_mag_limit=12.0, bright_star_radius_arcmin=1.5):
     
     cos_dec = np.cos(np.radians(dec_center))
     ra_step_adj = pos_step / cos_dec if cos_dec > 0.1 else pos_step
@@ -75,7 +76,13 @@ def local_search(ra_center, dec_center, pa_center, df_gaia, obstime,
         )
         
         if is_valid_pointing(counts, min_stars_per_cam, min_cams_with_stars):
-            return (cand_ra, cand_dec, cand_pa)
+            # Check for bright star near broken fibers
+            if not check_bright_stars_near_broken_fibers(
+                cand_ra, cand_dec, cand_pa, df_gaia, obstime, bench,
+                radius_deg=bright_star_radius_arcmin/60.0,
+                max_mag=bright_star_mag_limit
+            ):
+                return (cand_ra, cand_dec, cand_pa)
             
     return None
 
@@ -96,7 +103,9 @@ def main():
         "search_step": 0.02,
         "pa_radius": 5.0,
         "pa_step": 1.0,
-        "avoid_gaps": False
+        "avoid_gaps": False,
+        "bright_star_mag_limit": 12.0,
+        "bright_star_radius_arcmin": 1.5,
     }
 
     if args_conf.config and os.path.exists(args_conf.config):
@@ -122,6 +131,10 @@ def main():
                 defaults["min_stars"] = netflow_cfg["min_stars_per_cam"]
             if "min_cams_with_stars" in netflow_cfg:
                 defaults["min_cams"] = netflow_cfg["min_cams_with_stars"]
+            if "bright_star_mag_limit" in netflow_cfg:
+                defaults["bright_star_mag_limit"] = netflow_cfg["bright_star_mag_limit"]
+            if "bright_star_radius_arcmin" in netflow_cfg:
+                defaults["bright_star_radius_arcmin"] = netflow_cfg["bright_star_radius_arcmin"]
 
     parser = argparse.ArgumentParser(description="Local search to satisfy guide star constraints for a pointing list.")
     parser.add_argument("--config", "-c", help="Path to YAML configuration file")
@@ -131,6 +144,8 @@ def main():
     parser.add_argument("--obstime", "-t", default=defaults["obstime"], help="Observation time")
     parser.add_argument("--min_stars", type=int, default=defaults["min_stars"], help="Minimum guide stars per camera")
     parser.add_argument("--min_cams", type=int, default=defaults["min_cams"], help="Minimum guide cameras with stars")
+    parser.add_argument("--bright-star-mag-limit", type=float, default=defaults["bright_star_mag_limit"], help="Bright star magnitude limit to avoid around broken fibers")
+    parser.add_argument("--bright-star-radius-arcmin", type=float, default=defaults["bright_star_radius_arcmin"], help="Radius in arcminutes to avoid bright stars around broken fibers")
     
     # Search parameters
     parser.add_argument("--search_radius", type=float, default=defaults["search_radius"], help="Spatial search radius (deg)")
@@ -157,6 +172,15 @@ def main():
     for col in ["pmra_error", "pmdec_error", "parallax_over_error"]:
         if col not in df_gaia.columns:
             df_gaia[col] = np.nan
+    # Load instrument model (bench) to identify broken fibers
+    try:
+        import netflow_instrument
+        bench = netflow_instrument.getBench()
+        broken_centers = bench.cobras.centers[~bench.cobras.isGood]
+        print(f"Local search: using bench with {len(broken_centers)} broken cobras.")
+    except Exception as e:
+        print(f"Warning: could not initialize bench dynamically in local search: {e}")
+        bench = None
             
     success_count = 0
     fail_count = 0
@@ -173,7 +197,16 @@ def main():
             min_mag=12.0, max_mag=21.5, minsep_arcsec=1.0
         )
         
-        if is_valid_pointing(counts, args.min_stars, args.min_cams):
+        is_valid = is_valid_pointing(counts, args.min_stars, args.min_cams)
+        if is_valid:
+            # Check for bright star near broken fibers
+            is_valid = not check_bright_stars_near_broken_fibers(
+                ra, dec, pa, df_gaia, args.obstime, bench,
+                radius_deg=args.bright_star_radius_arcmin/60.0,
+                max_mag=args.bright_star_mag_limit
+            )
+            
+        if is_valid:
             success_count += 1
         else:
             best_cand = local_search(
@@ -187,7 +220,10 @@ def main():
                 pa_step=args.pa_step,
                 avoid_gaps=args.avoid_gaps,
                 all_pointings=t_in,
-                current_idx=i
+                current_idx=i,
+                bench=bench,
+                bright_star_mag_limit=args.bright_star_mag_limit,
+                bright_star_radius_arcmin=args.bright_star_radius_arcmin
             )
             
             if best_cand is not None:
