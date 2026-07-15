@@ -297,7 +297,7 @@ def add_dummy_targets_for_unassigned_near_bright_stars(bench, telescopes, pipe_c
                     lbl_n = 'Neighbor Centers' if idx_n == 0 else ""
                     lbl_f = 'Neighbor Fibers' if idx_n == 0 else ""
                     ax.plot(C_n.real, C_n.imag, 'x', color='gray', markersize=6, label=lbl_n)
-                    ax.plot(f_pos.real, f_pos.imag, 'o', color='orange', markersize=5, label=lbl_f)
+                    ax.plot(f_pos.real, f_pos.imag, 'o', markerfacecolor='none', markeredgecolor='orange', markeredgewidth=1.5, markersize=7, label=lbl_f)
                     circle_coll = plt.Circle((f_pos.real, f_pos.imag), collision_distance, color='red', fill=False, alpha=0.15)
                     ax.add_patch(circle_coll)
 
@@ -309,7 +309,7 @@ def add_dummy_targets_for_unassigned_near_bright_stars(bench, telescopes, pipe_c
                     for s_idx in near_sci_idx:
                         pt = sci_pfi[s_idx]
                         lbl = 'Nearby Science Targets' if first_sci else ""
-                        ax.plot(pt.real, pt.imag, 'o', color='purple', markersize=5, label=lbl)
+                        ax.plot(pt.real, pt.imag, 'o', color='purple', markersize=4, label=lbl)
                         first_sci = False
 
                 # 4. Plot other Gaia stars near C
@@ -328,9 +328,9 @@ def add_dummy_targets_for_unassigned_near_bright_stars(bench, telescopes, pipe_c
                         label=f'Target Bright Star (G={star_mag:.1f})')
 
                 # 6. Plot initial fiber position (Cobra Center since it was unassigned)
-                ax.plot(C.real, C.imag, 'bo', markersize=6, label='Initial Fiber Position')
+                ax.plot(C.real, C.imag, 'o', markerfacecolor='none', markeredgecolor='blue', markeredgewidth=1.5, markersize=7, label='Initial Fiber Position')
                 # 7. Plot final dummy target position
-                ax.plot(best_P.real, best_P.imag, 'go', markersize=8, label='Final Position (Dummy Target)')
+                ax.plot(best_P.real, best_P.imag, 'o', markerfacecolor='none', markeredgecolor='green', markeredgewidth=1.5, markersize=7, label='Final Position (Dummy Target)')
 
                 # Arrow indicating movement
                 ax.annotate("", xy=(best_P.real, best_P.imag), xytext=(C.real, C.imag),
