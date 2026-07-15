@@ -304,7 +304,7 @@ def add_dummy_targets_for_unassigned_near_bright_stars(bench, telescopes, pipe_c
                 # 3. Plot nearby science targets
                 if len(sci_pfi) > 0:
                     dist_sci = np.abs(sci_pfi - C)
-                    near_sci_idx = np.where((dist_sci < 5.0) & (t_sci_full['cobraId'] != cidx + 1))[0]
+                    near_sci_idx = np.where((dist_sci < 10.0) & (t_sci_full['cobraId'] != cidx + 1))[0]
                     first_sci = True
                     for s_idx in near_sci_idx:
                         pt = sci_pfi[s_idx]
@@ -315,7 +315,7 @@ def add_dummy_targets_for_unassigned_near_bright_stars(bench, telescopes, pipe_c
                 # 4. Plot other Gaia stars near C
                 if len(bright_pfi) > 0:
                     dist_gaia = np.abs(bright_pfi - C)
-                    near_gaia_idx = np.where((dist_gaia < 5.0) & (bright_pfi != P_star))[0]
+                    near_gaia_idx = np.where((dist_gaia < 10.0) & (bright_pfi != P_star))[0]
                     first_gaia = True
                     for g_idx in near_gaia_idx:
                         pt = bright_pfi[g_idx]
@@ -337,8 +337,8 @@ def add_dummy_targets_for_unassigned_near_bright_stars(bench, telescopes, pipe_c
                             arrowprops=dict(arrowstyle="->", color="green", lw=1.5, ls="--"))
 
                 # Formatting
-                ax.set_xlim(C.real - 5.0, C.real + 5.0)
-                ax.set_ylim(C.imag - 5.0, C.imag + 5.0)
+                ax.set_xlim(C.real - 10.0, C.real + 10.0)
+                ax.set_ylim(C.imag - 10.0, C.imag + 10.0)
                 ax.set_aspect('equal')
                 ax.grid(True, linestyle=':', alpha=0.5)
                 ax.set_xlabel('PFI X (mm)')
