@@ -80,6 +80,27 @@ def add_dummy_targets_for_unassigned_near_bright_stars(bench, telescopes, pipe_c
             print(f"No unassigned healthy cobras for {ppc_code}.")
             continue
 
+        # Load and project science targets in this exposure for plotting
+        try:
+            t_sci_full = Table.read(sci_path, format="ascii.ecsv")
+            if len(t_sci_full) > 0:
+                sci_sky = np.array([t_sci_full['ra'].tolist(), t_sci_full['dec'].tolist()])
+                sci_pfi_coords = ctrans(
+                    xyin=sci_sky,
+                    mode="sky_pfi",
+                    pa=tel._posang,
+                    cent=np.array([tel._ra, tel._dec]).reshape((2, 1)),
+                    pm=np.zeros_like(sci_sky),
+                    par=np.zeros(len(t_sci_full)),
+                    time=tel._time,
+                )
+                sci_pfi = sci_pfi_coords[0, :] + 1j * sci_pfi_coords[1, :]
+            else:
+                sci_pfi = np.array([], dtype=complex)
+        except Exception as e:
+            print(f"Warning: Could not project science targets for plotting: {e}")
+            sci_pfi = np.array([], dtype=complex)
+
         # Coordinates of unassigned cobras
         unassigned_centers = bench.cobras.centers[unassigned_healthy_cobras]
         unassigned_pfi = np.array([unassigned_centers.real, unassigned_centers.imag])
@@ -253,6 +274,87 @@ def add_dummy_targets_for_unassigned_near_bright_stars(bench, telescopes, pipe_c
                           f"  Distance (Sky): {init_dist_sky:.1f} arcsec -> {final_dist_sky:.1f} arcsec (diff: {final_dist_sky - init_dist_sky:+.1f} arcsec)\n")
             print(detail_log)
             report_lines.append(detail_log + "\n")
+
+            # Generate target local plot showing fibers, science targets, and gaia stars
+            try:
+                import matplotlib
+                matplotlib.use('Agg')
+                import matplotlib.pyplot as plt
+
+                fig, ax = plt.subplots(figsize=(7, 7))
+
+                # 1. Plot Cobra center & patrol boundaries
+                ax.plot(C.real, C.imag, 'b+', markersize=10, markeredgewidth=2, label=f'Cobra Center ({C.real:.2f}, {C.imag:.2f})')
+                circle_outer = plt.Circle((C.real, C.imag), r_max, color='blue', fill=False, linestyle='--', alpha=0.5, label='Patrol Boundaries')
+                circle_inner = plt.Circle((C.real, C.imag), r_min, color='blue', fill=False, linestyle='--', alpha=0.3)
+                ax.add_patch(circle_outer)
+                ax.add_patch(circle_inner)
+
+                # 2. Plot neighbors and their collision boundary
+                for idx_n, n_cidx in enumerate(neighbors):
+                    C_n = bench.cobras.centers[n_cidx]
+                    f_pos = fiber_pos[n_cidx]
+                    lbl_n = 'Neighbor Centers' if idx_n == 0 else ""
+                    lbl_f = 'Neighbor Fibers' if idx_n == 0 else ""
+                    ax.plot(C_n.real, C_n.imag, 'x', color='gray', markersize=6, label=lbl_n)
+                    ax.plot(f_pos.real, f_pos.imag, 'o', color='orange', markersize=5, label=lbl_f)
+                    circle_coll = plt.Circle((f_pos.real, f_pos.imag), collision_distance, color='red', fill=False, alpha=0.15)
+                    ax.add_patch(circle_coll)
+
+                # 3. Plot nearby science targets
+                if len(sci_pfi) > 0:
+                    dist_sci = np.abs(sci_pfi - C)
+                    near_sci_idx = np.where((dist_sci < 5.0) & (t_sci_full['cobraId'] != cidx + 1))[0]
+                    first_sci = True
+                    for s_idx in near_sci_idx:
+                        pt = sci_pfi[s_idx]
+                        lbl = 'Nearby Science Targets' if first_sci else ""
+                        ax.plot(pt.real, pt.imag, 'o', color='purple', markersize=5, label=lbl)
+                        first_sci = False
+
+                # 4. Plot other Gaia stars near C
+                if len(bright_pfi) > 0:
+                    dist_gaia = np.abs(bright_pfi - C)
+                    near_gaia_idx = np.where((dist_gaia < 5.0) & (bright_pfi != P_star))[0]
+                    first_gaia = True
+                    for g_idx in near_gaia_idx:
+                        pt = bright_pfi[g_idx]
+                        lbl = 'Other Gaia Stars' if first_gaia else ""
+                        ax.plot(pt.real, pt.imag, '*', color='yellow', markersize=8, markeredgecolor='black', label=lbl)
+                        first_gaia = False
+
+                # 5. Plot the target bright Gaia star to avoid
+                ax.plot(P_star.real, P_star.imag, '*', color='gold', markersize=14, markeredgecolor='black', markeredgewidth=1.5,
+                        label=f'Target Bright Star (G={star_mag:.1f})')
+
+                # 6. Plot initial fiber position (Cobra Center since it was unassigned)
+                ax.plot(C.real, C.imag, 'bo', markersize=6, label='Initial Fiber Position')
+                # 7. Plot final dummy target position
+                ax.plot(best_P.real, best_P.imag, 'go', markersize=8, label='Final Position (Dummy Target)')
+
+                # Arrow indicating movement
+                ax.annotate("", xy=(best_P.real, best_P.imag), xytext=(C.real, C.imag),
+                            arrowprops=dict(arrowstyle="->", color="green", lw=1.5, ls="--"))
+
+                # Formatting
+                ax.set_xlim(C.real - 5.0, C.real + 5.0)
+                ax.set_ylim(C.imag - 5.0, C.imag + 5.0)
+                ax.set_aspect('equal')
+                ax.grid(True, linestyle=':', alpha=0.5)
+                ax.set_xlabel('PFI X (mm)')
+                ax.set_ylabel('PFI Y (mm)')
+                ax.set_title(f'PPC: {ppc_code} | Cobra {cidx+1} (Fiber {fib})\nBright Star Avoidance for Unassigned Fiber')
+                ax.legend(loc='upper right', fontsize='x-small', framealpha=0.9)
+
+                # Save plot to targets_dir/science/dummy_plots_{ppc_code}
+                plot_dir = os.path.join(targets_dir, "science", f"dummy_plots_{ppc_code}")
+                os.makedirs(plot_dir, exist_ok=True)
+                plot_path = os.path.join(plot_dir, f"cobra_{cidx+1}.png")
+                plt.savefig(plot_path, dpi=150, bbox_inches='tight')
+                plt.close()
+                print(f"  Generated local plot: {plot_path}")
+            except Exception as e:
+                print(f"  Warning: Failed to generate plot for Cobra {cidx+1}: {e}")
 
             new_dummy_rows.append({
                 'ob_code': f"dummy_{cidx+1}_{ppc_code}",
