@@ -164,3 +164,20 @@ A diagnostic plot is saved to [optimized_coverage_with_gs.png](file:///mnt/ugnas
 3. **AG Camera Footprints**: Shows the boundaries of the 6 AG camera detectors in green dashed lines (`AG0` - `AG5`).
 4. **Selected Guide Stars**: Represents chosen guide stars inside camera footprints as yellow stars ($\star$).
 5. **Statistics**: Displays target coverage percentages per priority level in the plot title.
+
+<!-- Mermaid JS rendering support -->
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: false });
+  document.addEventListener('DOMContentLoaded', async () => {
+    const elements = document.querySelectorAll('pre code.language-mermaid');
+    for (const codeEl of elements) {
+      const preEl = codeEl.parentElement;
+      const div = document.createElement('div');
+      div.className = 'mermaid';
+      div.textContent = codeEl.textContent;
+      preEl.replaceWith(div);
+    }
+    await mermaid.run();
+  });
+</script>

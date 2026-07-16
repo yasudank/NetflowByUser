@@ -106,3 +106,20 @@ Key configuration settings and parameters.
 | `netflow.bright_star_radius_arcmin`| `1.5` | Avoidance radius (arcmin) around fibers |
 | `netflow.collision_distance` | `2.0` | Minimum allowed distance (mm) between fiber tips |
 | `pfs.black_dot_radius_margin` | `1.65` | Safety margin (mm) to avoid central black dots on positioners |
+
+<!-- Mermaid JS rendering support -->
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: false });
+  document.addEventListener('DOMContentLoaded', async () => {
+    const elements = document.querySelectorAll('pre code.language-mermaid');
+    for (const codeEl of elements) {
+      const preEl = codeEl.parentElement;
+      const div = document.createElement('div');
+      div.className = 'mermaid';
+      div.textContent = codeEl.textContent;
+      preEl.replaceWith(div);
+    }
+    await mermaid.run();
+  });
+</script>

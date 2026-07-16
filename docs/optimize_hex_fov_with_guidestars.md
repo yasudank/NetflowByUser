@@ -179,3 +179,20 @@ def check_bright_stars_near_broken_fibers(c_ra, c_dec, c_pa, df_gaia, obstime, b
 3. **AGカメラ視野**: 各ポインティングに対応する 6 つの AG カメラ検出器の物理形状ポリゴン（緑色点線）とカメラID (`AG0` - `AG5`)。
 4. **選択されたガイド星**: AGカメラ内で実際にガイド用として選出された Gaia 星（黄色の星マーク $\star$）。
 5. **統計情報**: 優先度レベル (P0, P1, P2 等) ごとの天体カバレッジ率がタイトル部分に表示されます。
+
+<!-- Mermaid JS rendering support -->
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: false });
+  document.addEventListener('DOMContentLoaded', async () => {
+    const elements = document.querySelectorAll('pre code.language-mermaid');
+    for (const codeEl of elements) {
+      const preEl = codeEl.parentElement;
+      const div = document.createElement('div');
+      div.className = 'mermaid';
+      div.textContent = codeEl.textContent;
+      preEl.replaceWith(div);
+    }
+    await mermaid.run();
+  });
+</script>
