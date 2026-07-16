@@ -142,6 +142,26 @@ def add_dummy_targets_for_unassigned_near_bright_stars(bench, telescopes, pipe_c
             )
             bright_pfi = bright_pfi_coords[0, :] + 1j * bright_pfi_coords[1, :]
 
+            # Project all Gaia stars to PFI coordinates for plotting
+            dist_to_center_all = np.hypot((df_gaia['ra'] - tel._ra) * cos_dec_tel, df_gaia['dec'] - tel._dec)
+            df_gaia_near = df_gaia[dist_to_center_all < 0.8]
+            if len(df_gaia_near) > 0:
+                gaia_ra = df_gaia_near['ra'].values
+                gaia_dec = df_gaia_near['dec'].values
+                gaia_sky_coords = np.array([gaia_ra, gaia_dec])
+                gaia_pfi_coords = ctrans(
+                    xyin=gaia_sky_coords,
+                    mode="sky_pfi",
+                    pa=tel._posang,
+                    cent=np.array([tel._ra, tel._dec]).reshape((2, 1)),
+                    pm=np.zeros_like(gaia_sky_coords),
+                    par=np.zeros(len(gaia_ra)),
+                    time=tel._time,
+                )
+                gaia_pfi = gaia_pfi_coords[0, :] + 1j * gaia_pfi_coords[1, :]
+            else:
+                gaia_pfi = np.array([], dtype=complex)
+
             cos_dec_un = np.cos(np.radians(unassigned_dec))[:, np.newaxis]
             d_ra = (unassigned_ra[:, np.newaxis] - bright_ra[np.newaxis, :]) * cos_dec_un
             d_dec = unassigned_dec[:, np.newaxis] - bright_dec[np.newaxis, :]
@@ -312,15 +332,15 @@ def add_dummy_targets_for_unassigned_near_bright_stars(bench, telescopes, pipe_c
                         ax.plot(pt.real, pt.imag, 'o', color='purple', markersize=4, label=lbl)
                         first_sci = False
 
-                # 4. Plot other Gaia stars near C
-                if len(bright_pfi) > 0:
-                    dist_gaia = np.abs(bright_pfi - C)
-                    near_gaia_idx = np.where((dist_gaia < 10.0) & (bright_pfi != P_star))[0]
+                # 4. Plot other Gaia stars near C (all stars in local catalog)
+                if len(gaia_pfi) > 0:
+                    dist_gaia = np.abs(gaia_pfi - C)
+                    near_gaia_idx = np.where((dist_gaia < 10.0) & (gaia_pfi != P_star))[0]
                     first_gaia = True
                     for g_idx in near_gaia_idx:
-                        pt = bright_pfi[g_idx]
+                        pt = gaia_pfi[g_idx]
                         lbl = 'Other Gaia Stars' if first_gaia else ""
-                        ax.plot(pt.real, pt.imag, '*', color='yellow', markersize=8, markeredgecolor='black', label=lbl)
+                        ax.plot(pt.real, pt.imag, '*', color='yellow', markersize=6, markeredgecolor='gray', markeredgewidth=0.5, label=lbl)
                         first_gaia = False
 
                 # 5. Plot the target bright Gaia star to avoid
