@@ -181,3 +181,18 @@ A diagnostic plot is saved to [optimized_coverage_with_gs.png](file:///mnt/ugnas
     await mermaid.run();
   });
 </script>
+
+<!-- MathJax JS rendering support -->
+<script>
+  window.MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']]
+    },
+    options: {
+      ignoreHtmlClass: 'tex2jax_ignore',
+      processHtmlClass: 'tex2jax_process'
+    }
+  };
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
