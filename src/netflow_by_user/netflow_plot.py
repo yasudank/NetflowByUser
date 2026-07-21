@@ -85,6 +85,7 @@ def plot_sky_distribution(res, tgt, plot_file_path):
 
     # Invert x-axis to represent RA properly (east to the left)
     plt.gca().invert_xaxis()
+    plt.gca().set_aspect('equal')
 
     plt.tight_layout()
     plt.savefig(plot_file_path, dpi=200, bbox_inches='tight')
