@@ -9,6 +9,18 @@ PFS (Prime Focus Spectrograph) is a highly complex instrument, making thorough a
 
 ---
 
+## Documentation & Slides
+
+For detailed explanations of various algorithms, workflows, and slide presentations, please visit the GitHub Pages portal:
+* 🌐 **[PFS Netflow Observation Planning Portal (GitHub Pages)](https://yasudank.github.io/NetflowByUser/)**
+
+Available resources on this portal:
+* 🇯🇵🇺🇸 **Field of View & Guide Star Optimization Algorithm** (Japanese/English)
+* 🇯🇵🇺🇸 **Integration Pipeline & Dummy Target Avoidance** (Japanese/English)
+* 🇯🇵🇺🇸 **Marp Slide Presentations** (Japanese/English)
+
+---
+
 ## Quick Start
 
 By executing the following commands in order, you can quickly test the entire pipeline from fiber assignment to `pfsDesign` generation on sample data.
