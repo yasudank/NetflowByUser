@@ -230,38 +230,76 @@ netflow ソルバー（Gurobi）による割り当て計算を行う直前に、
 
 ## 3. 設定ファイルの設定項目 (`netflow_pipeline_config.yaml`)
 
-netflow_pipeline_config.yaml の主要な設定パラメータは以下の通りです。
+`netflow_pipeline_config.yaml` の設定パラメータは以下の通りです。
 
 ```yaml
 # 共通設定
-proposal_id: "S26A-104"
+proposal_id: "S26A-104"                      # 観測提案ID
 obstime: "2026-05-09T06:00:00Z"              # 観測日時(UTC)
 
 # 入力設定
 inputs:
   pointing_file: null                        # 既存のポインティングファイル、null指定で自動最適化を実行
-  catalog_dir: "./cosmos/"
-  science_targets: "targets_all_20260514.csv"
-  fluxstd_targets: "fluxstd.ecsv"
-  sky_targets: "sky.ecsv"
-  gaia_catalog: "./cosmos/gaia.ecsv"            # Validation用ローカルGaiaカタログ
+  catalog_dir: "./cosmos/"                  # 入力カタログのルートディレクトリ
+  science_targets: "targets_all_20260514.csv" # サイエンスターゲットリスト
+  fluxstd_targets: "fluxstd.ecsv"            # フラックス標準星カタログ
+  sky_targets: "sky.ecsv"                    # スカイ位置カタログ
+  gaia_catalog: "./cosmos/gaia.ecsv"         # ローカルGaiaカタログ (ガイド星最適化・Validation用)
+  gaiadb_config: null                        # オンラインGaiaDB使用時のconfig.tomlパス (ローカルカタログ使用時はnull)
 
 # 出力設定
 outputs:
   targets_dir: "targets"                     # アサイン結果ECSVの出力先フォルダ
   plot_file: "sky_distribution.png"          # 最終アサイン結果のプロットファイル
-  fov_plot_file: "fov_coverage.png"           # 視野自動最適化時のカバー分布図プロットファイル
-  text_output: "output.txt"
+  fov_plot_file: "fov_coverage.png"          # 視野自動最適化時のカバー分布図プロットファイル
+  text_output: "output.txt"                  # テキストサマリー出力ファイル
 
 # netflow計算パラメータ
 netflow:
-  t_obs: 900.0                              # 露出上書き用の観測時間 (秒)
+  random_seed: 20                            # 乱数シード
+  nvisit: 1                                  # ポインティングごとのビジット数
+  t_obs: 900.0                               # 露出上書き用の観測時間 (秒)
   num_fields: 4                              # ポインティング自動最適化時の視野数 (FoVの配置数)
   max_priority: 2                            # ポインティング自動最適化で考慮する最大優先度 (小さい値ほど高優先)
   min_stars_per_cam: 2                       # 1つのガイドカメラ内に必要なガイド星の最小数
   min_cams_with_stars: 6                     # min_stars_per_cam の条件を満たすべきガイドカメラの最小数（最大6）
-  bright_star_mag_limit: 12.0                # 故障ファイバー近傍で回避すべき明るい星のG等級閾値（デフォルト: 12.0）
-  bright_star_radius_arcmin: 1.5             # 故障ファイバー近傍で回避すべき半径（分角、デフォルト: 1.5）
+  collision_distance: 2.0                    # ファイバー先端同士の最小許容距離 (mm)
+  elbow_collisions: true                     # 肘部（エルボー）の衝突判定フラグ
+  broken_cobras_margin: 1.0                  # 故障Cobra周辺の回避マージン (mm)
+  bright_star_mag_limit: 12.0                # 故障ファイバー近傍で回避すべき明るい星のG等級閾値
+  bright_star_radius_arcmin: 1.5             # 故障ファイバー近傍で回避すべき半径 (分角)
+  sky:
+    num_required: 400                        # 1ポインティングあたり必要なスカイファイバー数
+    non_observation_cost: 5000               # スカイ非割り当て時のペナルティ
+    min_per_location: 15                     # 各Laszloセクターごとの最小スカイ数 (均等化制約)
+  fluxstd:
+    num_required: 100                        # 1ポインティングあたり必要なフラックス標準星数
+    non_observation_cost: 5000               # 標準星非割り当て時のペナルティ
+    mag_min: 17.0                            # 標準星の最小G等級
+    mag_max: 19.0                            # 標準星の最大G等級
+  guidestars:
+    mag_min: 12.0                            # ガイド星の最小G等級 (最適化用)
+    mag_max: 21.5                            # ガイド星の最大G等級 (最適化用)
+
+# Gurobiソルバー設定
+gurobi:
+  seed: 0                                    # ソルバーの乱数シード
+  presolve: 1                                # プリソルブ設定 (1: 自動)
+  method: 0                                  # 解法アルゴリズム (0: プライマル・シンプライクス)
+  degenmoves: 0                              # 退化移動設定
+  heuristics: 0.6                            # 実行可能解探索ヒューリスティクスの割合
+  mipfocus: 0                                # MIP探索のフォーカス (0: バランス)
+  mipgap: 0.005                              # 相対MIPギャップ許容値 (0.5%)
+  PreSOS2Encoding: 0                         # SOS2エンコーディング設定
+  PreSOS1Encoding: 0                         # SOS1エンコーディング設定
+  threads: 4                                 # ソルバーが使用するスレッド数
+
+# PfsDesignおよびOPE生成パラメータ
+pfs_design:
+  science_catalog_id: 10356                  # サイエンスカタログID
+  ope_template: "./ope_templates/template_latest.ope" # OPEファイルテンプレートパス
+  exptime_per_frame: 900.0                   # サブフレーム1回あたりの露出時間 (秒)
+  n_frames: 4                                # サブフレーム数
 ```
 
 ---

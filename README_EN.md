@@ -232,36 +232,74 @@ Outputs the mapped target allocations under the `targets/` directory in ECSV for
 
 ## 3. Configuration Parameters (`netflow_pipeline_config.yaml`)
 
-Key configuration parameters in `netflow_pipeline_config.yaml` are as follows:
+Configuration parameters in `netflow_pipeline_config.yaml` are as follows:
 
 ```yaml
 # General settings
-proposal_id: "S26A-104"
+proposal_id: "S26A-104"                      # Proposal ID
 obstime: "2026-05-09T06:00:00Z"              # Observing time (UTC)
 
 # Input paths
 inputs:
   pointing_file: null                        # Existing pointing file; set to null to trigger auto-optimization
-  catalog_dir: "./cosmos/"
-  science_targets: "targets_all_20260514.csv"
-  fluxstd_targets: "fluxstd.ecsv"
-  sky_targets: "sky.ecsv"
-  gaia_catalog: "./cosmos/gaia.ecsv"            # Local Gaia catalog for validation
+  catalog_dir: "./cosmos/"                  # Root directory for input catalogs
+  science_targets: "targets_all_20260514.csv" # Science target list
+  fluxstd_targets: "fluxstd.ecsv"            # Flux standard star catalog
+  sky_targets: "sky.ecsv"                    # Sky position catalog
+  gaia_catalog: "./cosmos/gaia.ecsv"         # Local Gaia catalog for guide star optimization & validation
+  gaiadb_config: null                        # Path to config.toml when using online GaiaDB (null for local catalog)
 
 # Output paths
 outputs:
   targets_dir: "targets"                     # Target ECSV output folder
   plot_file: "sky_distribution.png"          # Final target allocation plot
-  fov_plot_file: "fov_coverage.png"           # Output plot for automatic FoV optimization coverage
-  text_output: "output.txt"
+  fov_plot_file: "fov_coverage.png"          # Output plot for automatic FoV optimization coverage
+  text_output: "output.txt"                  # Text summary output file
 
 # Netflow solver parameters
 netflow:
-  t_obs: 900.0                              # Single exposure time for overwrite (seconds)
+  random_seed: 20                            # Random seed
+  nvisit: 1                                  # Number of visits per pointing
+  t_obs: 900.0                               # Single exposure time for overwrite (seconds)
   num_fields: 4                              # Number of fields to optimize (FoV placement count)
   max_priority: 2                            # Maximum priority to consider for auto-optimization (smaller is higher priority)
   min_stars_per_cam: 2                       # Minimum guide stars required per guide camera
-  min_cams_with_stars: 6                     # Minimum number of guide cameras that must meet the min_stars requirement
-  bright_star_mag_limit: 12.0                # Bright star magnitude threshold to avoid near broken fibers (default: 12.0)
-  bright_star_radius_arcmin: 1.5             # Avoidance radius near broken fibers in arcminutes (default: 1.5)
+  min_cams_with_stars: 6                     # Minimum number of guide cameras that must meet min_stars_per_cam requirement
+  collision_distance: 2.0                    # Minimum allowable distance between fiber tips (mm)
+  elbow_collisions: true                     # Flag to check elbow collisions
+  broken_cobras_margin: 1.0                  # Avoidance margin around broken Cobras (mm)
+  bright_star_mag_limit: 12.0                # Bright star magnitude threshold to avoid near broken fibers
+  bright_star_radius_arcmin: 1.5             # Avoidance radius near broken fibers in arcminutes
+  sky:
+    num_required: 400                        # Required sky fibers per pointing
+    non_observation_cost: 5000               # Penalty cost for unallocated sky
+    min_per_location: 15                     # Minimum sky fibers per Laszlo sector (uniformity constraint)
+  fluxstd:
+    num_required: 100                        # Required flux standard stars per pointing
+    non_observation_cost: 5000               # Penalty cost for unallocated flux standard stars
+    mag_min: 17.0                            # Minimum G magnitude for flux standards
+    mag_max: 19.0                            # Maximum G magnitude for flux standards
+  guidestars:
+    mag_min: 12.0                            # Minimum G magnitude for guide stars (for optimization)
+    mag_max: 21.5                            # Maximum G magnitude for guide stars (for optimization)
+
+# Gurobi solver options
+gurobi:
+  seed: 0                                    # Solver random seed
+  presolve: 1                                # Presolve mode (1: Auto)
+  method: 0                                  # Algorithm method (0: Primal Simplex)
+  degenmoves: 0                              # Degenerate moves setting
+  heuristics: 0.6                            # Proportion of time spent on feasibility heuristics
+  mipfocus: 0                                # MIP search focus (0: Balanced)
+  mipgap: 0.005                              # Relative MIP gap tolerance (0.5%)
+  PreSOS2Encoding: 0                         # Pre-SOS2 encoding option
+  PreSOS1Encoding: 0                         # Pre-SOS1 encoding option
+  threads: 4                                 # Number of threads used by the solver
+
+# PfsDesign and OPE generation parameters
+pfs_design:
+  science_catalog_id: 10356                  # Science catalog ID
+  ope_template: "./ope_templates/template_latest.ope" # Path to OPE template file
+  exptime_per_frame: 900.0                   # Exposure time per sub-frame (seconds)
+  n_frames: 4                                # Number of sub-frames
 ```
