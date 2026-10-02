@@ -159,6 +159,7 @@ optimize_hex_fov_local_search --input cosmos/hexagons_cosmos_flat_centers.ecsv -
 
 The search bounds and step sizes can be adjusted using the `--search_radius`, `--search_step`, `--pa_radius`, and `--pa_step` arguments.
 Additionally, you can use the `--avoid-gaps` option to apply a penalty to candidates that move away from adjacent pointings, which helps to avoid creating physical gaps in the contiguous grid.
+During execution, a report table showing the number of guide stars detected in each guide camera (AG0 to AG5), along with the total count and number of valid cameras, is output to the console. You can also specify `--report-file <path>` to save the report table to a text file, or `--add-columns` to include the guide star count columns (`ag0`..`ag5`, `n_guidestars`) in the output ECSV file.
 
 ---
 

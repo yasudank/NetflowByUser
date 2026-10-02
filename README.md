@@ -159,6 +159,7 @@ optimize_hex_fov_local_search --input cosmos/hexagons_cosmos_flat_centers.ecsv -
 
 探索範囲やステップサイズは `--search_radius`, `--search_step`, `--pa_radius`, `--pa_step` 引数で調整可能です。
 また、`--avoid-gaps` オプションを指定することで、隣接する視野同士に隙間ができないように（理想的な配置間隔から離れすぎないように）ペナルティを課して調整座標を選ぶことができます。
+実行時には、各ポインティングで各ガイドカメラ（AG0〜AG5）に何個のガイド星が入ったかのレポート表（および合計数や制約を満たしたカメラ数）がコンソールに出力されます。`--report-file <path>` を指定するとレポートをテキストファイルに出力でき、`--add-columns` を指定すると出力ECSVに各カメラの星数カラム（`ag0`〜`ag5`, `n_guidestars`）を追加して保存することも可能です。
 
 ## 1. 実行方法
 

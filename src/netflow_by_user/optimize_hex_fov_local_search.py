@@ -82,7 +82,7 @@ def local_search(ra_center, dec_center, pa_center, df_gaia, obstime,
                 radius_deg=bright_star_radius_arcmin/60.0,
                 max_mag=bright_star_mag_limit
             ):
-                return (cand_ra, cand_dec, cand_pa)
+                return (cand_ra, cand_dec, cand_pa, counts)
             
     return None
 
@@ -153,6 +153,8 @@ def main():
     parser.add_argument("--pa_radius", type=float, default=defaults["pa_radius"], help="PA search radius (deg)")
     parser.add_argument("--pa_step", type=float, default=defaults["pa_step"], help="PA search step (deg)")
     parser.add_argument("--avoid-gaps", action="store_true", default=defaults["avoid_gaps"], help="Avoid creating gaps between adjacent pointings")
+    parser.add_argument("--add-columns", action="store_true", help="Add guide star count columns (ag0..ag5, n_guidestars) to the output ECSV")
+    parser.add_argument("--report-file", default=None, help="Save guide star report to a text file")
     
     args = parser.parse_args(remaining_argv)
     
@@ -185,12 +187,14 @@ def main():
     success_count = 0
     fail_count = 0
     adjusted_count = 0
+    report_rows = []
     
     print("Evaluating pointings...")
     for i, row in enumerate(tqdm(t_in)):
-        ra = row["ppc_ra"]
-        dec = row["ppc_dec"]
-        pa = row["ppc_pa"]
+        ppc_code = str(row["ppc_code"]) if "ppc_code" in t_in.colnames else f"POINTING_{i+1}"
+        ra = float(row["ppc_ra"])
+        dec = float(row["ppc_dec"])
+        pa = float(row["ppc_pa"])
         
         counts, _ = evaluate_guidestars_single(
             ra, dec, pa, df_gaia, args.obstime,
@@ -208,6 +212,24 @@ def main():
             
         if is_valid:
             success_count += 1
+            status = "Valid"
+            final_counts = counts
+            cams_ok = sum(1 for c in final_counts if c >= args.min_stars)
+            total_stars = sum(c for c in final_counts if c > 0)
+            tqdm.write(
+                f"[{i+1}/{len(t_in)}] {ppc_code}: Valid (No adjustment needed) -> "
+                f"RA={ra:.5f}, Dec={dec:.5f}, PA={pa:5.1f}° | "
+                f"AG0..AG5: {final_counts} (Total: {total_stars}, Cams OK: {cams_ok}/{len(final_counts)})"
+            )
+            report_rows.append({
+                "idx": i + 1,
+                "ppc_code": ppc_code,
+                "status": status,
+                "ra": ra, "dec": dec, "pa": pa,
+                "counts": final_counts,
+                "total": total_stars,
+                "cams_ok": cams_ok,
+            })
         else:
             best_cand = local_search(
                 ra, dec, pa, df_gaia, args.obstime,
@@ -227,19 +249,105 @@ def main():
             )
             
             if best_cand is not None:
-                row["ppc_ra"] = best_cand[0]
-                row["ppc_dec"] = best_cand[1]
-                row["ppc_pa"] = best_cand[2]
+                new_ra, new_dec, new_pa, final_counts = best_cand
+                row["ppc_ra"] = new_ra
+                row["ppc_dec"] = new_dec
+                row["ppc_pa"] = new_pa
                 success_count += 1
                 adjusted_count += 1
+                status = "Adjusted"
+                cams_ok = sum(1 for c in final_counts if c >= args.min_stars)
+                total_stars = sum(c for c in final_counts if c > 0)
+                tqdm.write(
+                    f"[{i+1}/{len(t_in)}] {ppc_code}: Adjusted -> "
+                    f"RA={new_ra:.5f}, Dec={new_dec:.5f}, PA={new_pa:5.1f}° | "
+                    f"AG0..AG5: {final_counts} (Total: {total_stars}, Cams OK: {cams_ok}/{len(final_counts)})"
+                )
+                report_rows.append({
+                    "idx": i + 1,
+                    "ppc_code": ppc_code,
+                    "status": status,
+                    "ra": new_ra, "dec": new_dec, "pa": new_pa,
+                    "counts": final_counts,
+                    "total": total_stars,
+                    "cams_ok": cams_ok,
+                })
             else:
                 fail_count += 1
+                status = "Failed"
+                final_counts = counts
+                cams_ok = sum(1 for c in final_counts if c >= args.min_stars)
+                total_stars = sum(c for c in final_counts if c > 0)
+                tqdm.write(
+                    f"[{i+1}/{len(t_in)}] {ppc_code}: FAILED (No valid pointing found within search radius) | "
+                    f"Initial AG0..AG5: {final_counts} (Cams OK: {cams_ok}/{len(final_counts)})"
+                )
+                report_rows.append({
+                    "idx": i + 1,
+                    "ppc_code": ppc_code,
+                    "status": status,
+                    "ra": ra, "dec": dec, "pa": pa,
+                    "counts": final_counts,
+                    "total": total_stars,
+                    "cams_ok": cams_ok,
+                })
                 
+    # Build guide star report table
+    code_width = max(15, max((len(str(r["ppc_code"])) for r in report_rows), default=15))
+    cams_ok_hdr = f"Cams OK(>={args.min_stars})"
+    
+    header = (
+        f"{'#':<3}  {'Pointing Code':<{code_width}}  {'Status':<8}  "
+        f"{'RA [deg]':>10}  {'Dec [deg]':>10}  {'PA [deg]':>8}  "
+        f"{'AG0':>5}  {'AG1':>5}  {'AG2':>5}  {'AG3':>5}  {'AG4':>5}  {'AG5':>5}  "
+        f"{'Total':>6}  {cams_ok_hdr:>14}"
+    )
+    separator = "-" * len(header)
+    double_separator = "=" * len(header)
+    
+    table_lines = [
+        "",
+        double_separator,
+        "Guide Stars Report per Pointing:",
+        separator,
+        header,
+        separator,
+    ]
+    
+    for r in report_rows:
+        def fmt_cam(c):
+            if c < 0:
+                return "  SAT"
+            return f"{c:5d}"
+            
+        c_strs = "  ".join(fmt_cam(c) for c in r["counts"])
+        cams_ok_str = f"{r['cams_ok']}/{len(r['counts'])}"
+        line = (
+            f"{r['idx']:<3d}  {r['ppc_code']:<{code_width}}  {r['status']:<8}  "
+            f"{r['ra']:10.5f}  {r['dec']:10.5f}  {r['pa']:8.2f}  "
+            f"{c_strs}  {r['total']:6d}  {cams_ok_str:>14}"
+        )
+        table_lines.append(line)
+        
+    table_lines.append(double_separator)
+    report_text = "\n".join(table_lines)
+    print(report_text)
+    
     print(f"\nSummary:")
     print(f"Total Pointings: {len(t_in)}")
     print(f"Initially Valid or Adjusted Successfully: {success_count} (Adjusted: {adjusted_count})")
     print(f"Failed to find valid pointing nearby: {fail_count}")
     
+    if args.report_file:
+        with open(args.report_file, "w") as f:
+            f.write(report_text + f"\n\nTotal: {len(t_in)}, Success: {success_count}, Adjusted: {adjusted_count}, Failed: {fail_count}\n")
+        print(f"Saved guide star report to {args.report_file}")
+        
+    if args.add_columns:
+        for cam_idx in range(6):
+            t_in[f"ag{cam_idx}"] = [r["counts"][cam_idx] for r in report_rows]
+        t_in["n_guidestars"] = [r["total"] for r in report_rows]
+        
     t_in.write(args.output, format="ascii.ecsv", overwrite=True)
     print(f"Saved optimized pointings to {args.output}")
 
