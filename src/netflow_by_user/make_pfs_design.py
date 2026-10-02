@@ -176,6 +176,7 @@ def generate_pfs_designs(
     n_frames=4,
     pipeline_config_path=None,
     pipeline_config=None,
+    bench=None,
 ):
     """Generate pfsDesign FITS files from fiber assignment results.
     
@@ -286,6 +287,15 @@ def generate_pfs_designs(
         os.makedirs(outdir)
         print(f"Created output directory: {outdir}")
 
+    # Ensure bench is available for generate_pfs_design
+    if bench is None:
+        try:
+            import netflow_instrument
+            black_dot_radius_margin = p_cfg.get("pfs", {}).get("black_dot_radius_margin", 1.65) if p_cfg else 1.65
+            bench = netflow_instrument.getBench(black_dot_radius_margin)
+        except Exception as e:
+            print(f"Warning: could not getBench in generate_pfs_designs: {e}")
+
     # List to collect per-pointing info for OPE file generation
     ope_info_rows = []
     # List to collect summary info for validation
@@ -373,7 +383,7 @@ def generate_pfs_designs(
             tele,
             targets,
             target_class_dict,
-            bench=None,
+            bench=bench,
             arms=arm_,
             design_name=ppc_code,
             obs_time=obstime

@@ -149,6 +149,37 @@ def apply_plot_pfsdesign_patch(venv_dir):
     except Exception as e:
         print(f"Error applying patch to plot_pfsDesign.py: {e}")
 
+def apply_pfs_design_tool_patch(venv_dir):
+    """Applies a patch to pfs_design_tool designutils.py to ensure guidecam_geometry is imported."""
+    import glob
+    search_pattern = os.path.join(venv_dir, "lib", "python3.*", "site-packages", "pfs_design_tool", "pointing_utils", "designutils.py")
+    matches = glob.glob(search_pattern)
+    if not matches:
+        print("Warning: Could not find pfs_design_tool/pointing_utils/designutils.py to apply patch.")
+        return
+        
+    designutils_file = matches[0]
+    print(f"\nApplying designutils.py patch to: {designutils_file}")
+    
+    try:
+        with open(designutils_file, "r") as f:
+            content = f.read()
+            
+        old_block = 'from ets_shuffle.convenience import flag_close_pairs\n'
+        new_block = 'from ets_shuffle.convenience import flag_close_pairs, guidecam_geometry\n'
+        
+        if old_block in content:
+            new_content = content.replace(old_block, new_block)
+            with open(designutils_file, "w") as f:
+                f.write(new_content)
+            print("Successfully applied patch to designutils.py")
+        elif new_block in content:
+            print("designutils.py is already patched.")
+        else:
+            print("Warning: Could not apply patch to designutils.py, target import not found.")
+    except Exception as e:
+        print(f"Error applying patch to designutils.py: {e}")
+
 def parse_yaml_fallback(file_path):
     """Fallback parser if PyYAML is not installed."""
     pfs_deps = {}
@@ -546,6 +577,7 @@ def main():
     if not args.dry_run:
         apply_validation_patch(os.path.abspath(args.venv_dir))
         apply_plot_pfsdesign_patch(os.path.abspath(args.venv_dir))
+        apply_pfs_design_tool_patch(os.path.abspath(args.venv_dir))
         cleanup_bin_directory(os.path.abspath(args.venv_dir))
         print("\nVirtual environment setup completed successfully!")
     else:

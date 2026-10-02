@@ -635,7 +635,8 @@ def main():
     from make_pfs_design import generate_pfs_designs
     generate_pfs_designs(
         pipeline_config_path=args.config,
-        pipeline_config=pipe_config
+        pipeline_config=pipe_config,
+        bench=bench
     )
 if __name__ == '__main__':
     main()

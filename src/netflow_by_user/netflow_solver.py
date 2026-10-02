@@ -1,5 +1,6 @@
 import numpy as np
 import pprint
+import inspect
 from collections import defaultdict
 from astropy.table import Table
 import ets_fiber_assigner.netflow as nf
@@ -110,8 +111,17 @@ def solve_assignment(bench, tgt, telescopes, pipe_config):
         if broken_cobras_margin is None:
             broken_cobras_margin = pipe_config["netflow"].get("broken_cobras_margin", 1.0)
             
-        # fiducialsAvoidDistance
-        fiducials_avoid_distance = pfs_config.get("fiducialsAvoidDistance", 0.0)
+        # Determine fiducial avoidance parameter dynamically based on ets_fiber_assigner version
+        # v3.8+ uses avoidFiducials (bool), while v3.6/v3.7 uses fiducialsAvoidDistance (float)
+        build_problem_params = inspect.signature(nf.buildProblem).parameters
+        fiducial_kwargs = {}
+        if "avoidFiducials" in build_problem_params:
+            avoid_fiducials = pfs_config.get("avoidFiducials", True)
+            if "fiducialsAvoidDistance" in pfs_config:
+                avoid_fiducials = bool(pfs_config["fiducialsAvoidDistance"] > 0)
+            fiducial_kwargs["avoidFiducials"] = avoid_fiducials
+        elif "fiducialsAvoidDistance" in build_problem_params:
+            fiducial_kwargs["fiducialsAvoidDistance"] = pfs_config.get("fiducialsAvoidDistance", 0.0)
         
         # dot_penalty -> blackDotPenalty
         black_dot_penalty = pfs_config.get("dot_penalty")
@@ -153,14 +163,14 @@ def solve_assignment(bench, tgt, telescopes, pipe_config):
                                gurobi=True, gurobiOptions=gurobiOptions,
                                alreadyObserved=alreadyObserved,
                                brokenCobrasMargin=broken_cobras_margin,
-                               fiducialsAvoidDistance=fiducials_avoid_distance,
                                blackDotPenalty=black_dot_penalty,
                                cobraSafetyMargin=cobra_safety_margin,
                                numReservedFibers=num_reserved_fibers,
                                fiberNonAllocationCost=fiber_non_allocation_cost,
                                cobraLocationGroup=cobraRegions,
                                minSkyTargetsPerLocation=min_sky_per_loc,
-                               locationGroupPenalty=penalty)
+                               locationGroupPenalty=penalty,
+                               **fiducial_kwargs)
 
         print("solving the problem")
         prob.solve()
