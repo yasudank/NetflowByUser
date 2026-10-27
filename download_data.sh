@@ -5,7 +5,7 @@ set -e
 # Settings
 USER="yasudank"
 REPO="NetflowByUser"
-TAG="v1.0.0-data"
+TAG="v1.0.1-data"
 
 echo "============================================================="
 echo "PFS Netflow Dataset Downloader"
