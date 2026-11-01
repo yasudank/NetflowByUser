@@ -161,6 +161,44 @@ optimize_hex_fov_local_search --input cosmos/hexagons_cosmos_flat_centers.ecsv -
 また、`--avoid-gaps` オプションを指定することで、隣接する視野同士に隙間ができないように（理想的な配置間隔から離れすぎないように）ペナルティを課して調整座標を選ぶことができます。
 実行時には、各ポインティングで各ガイドカメラ（AG0〜AG5）に何個のガイド星が入ったかのレポート表（および合計数や制約を満たしたカメラ数）がコンソールに出力されます。`--report-file <path>` を指定するとレポートをテキストファイルに出力でき、`--add-columns` を指定すると出力ECSVに各カメラの星数カラム（`ag0`〜`ag5`, `n_guidestars`）を追加して保存することも可能です。
 
+### (参考) ポインティングとターゲットのオーバーラップ可視化ツール (`plot_pointing_overlap`)
+
+任意のポインティングリスト（ECSV または CSV）とターゲットリスト（CSV または ECSV）を受け取り、六角形 FoV とターゲットの重複・被覆状態を示す図（PNG）を生成します。
+
+```bash
+# 基本的な実行方法
+plot_pointing_overlap --pointings cosmos/hexagons_cosmos_flat_centers.ecsv --targets cosmos/targets_all_20260514.csv --output overlap_plot.png
+
+# 優先度フィルタや色分けオプションの指定
+plot_pointing_overlap -p cosmos/hexagons_cosmos_flat_centers.ecsv -t cosmos/targets_all_20260514.csv --max-priority 2 --color-by pointing --output overlap_by_fov.png
+```
+
+- `--color-by`: 色分けのモードを選択できます。
+  - `pointing`: ポインティング（FoV）ごとに色分け（デフォルト）
+  - `priority`: ターゲットの優先度別に色分け
+  - `overlap`: ターゲットが何個の FoV に重複してカバーされているか（多重度別）で色分け
+- `--config`, `-c`: 設定ファイル（`netflow_pipeline_config.yaml`）からポインティング・ターゲットパスを読み込むことも可能です。
+- 実行時、コンソールに各 FoV のカバー数、ユニークカバー率、多重カバー数などの統計サマリーが表示されます。
+
+### (参考) 保存データからの sky_distribution 再描画ツール (`plot_sky_distribution`)
+
+Netflow ソルバーを再実行することなく、すでに保存された `targets/` ディレクトリ（各露光の割り当て結果 ECSV）および入力カタログから `sky_distribution.png` に相当する全天分布図を再生成します。また、**Rubin/LSST の視野（直径 3.5 度、半径 1.75 度）** および PFS の六角形視野も重ねて描画します。
+
+```bash
+# 設定ファイルから自動読み込みして再生成
+plot_sky_distribution --config netflow_config_2026Nov.yaml --output sky_distribution_with_rubin.png
+
+# 個別にパスや Rubin 視野パラメータを指定して実行
+plot_sky_distribution --targets-dir targets --science-targets xmm_lss/targets_all.csv --pointing-file xmm_lss/hexagons_xmm_lss_flat_centers.ecsv --rubin-ra 35.70 --rubin-dec -4.80 --rubin-radius 1.75 --output sky_distribution_with_rubin.png
+```
+
+- `--rubin-ra`, `--rubin-dec`: Rubin 視野の中心座標（deg）。XMM-LSS (35.70°, -4.80°) や COSMOS (150.10°, 2.18°) などの領域に応じて自動判定されます。
+- `--rubin-radius`: Rubin 視野の半径（deg、デフォルト: 1.75度 = 直径 3.5度）。
+- `--no-rubin`: Rubin 視野の円形枠を描画しない場合に指定。
+- `--no-pfs-hex`: PFS の六角形 FoV 枠を描画しない場合に指定。
+
+
+
 ## 1. 実行方法
 
 アクティベートした仮想環境の Python を使用して、あるいは作成された `.venv/bin/python` を明示的に指定して、スクリプトを実行します。

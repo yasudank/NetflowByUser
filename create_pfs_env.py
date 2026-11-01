@@ -390,7 +390,8 @@ def cleanup_bin_directory(venv_dir):
         "python", "python3", "pip", "pip3", "uv", "activate", "activate.csh", "activate.fish", "Activate.ps1",
         "run_netflow", "make_pfs_design", "optimize_hex_fov", 
         "optimize_hex_fov_with_guidestars", "optimize_hex_fov_local_search",
-        "merge_target_csv", "check_sky_sectors"
+        "merge_target_csv", "check_sky_sectors", "plot_pointing_overlap",
+        "plot_sky_distribution"
     ]
     
     moved_count = 0

@@ -483,17 +483,19 @@ def generate_pfs_designs(
         ra_str = Angle(ra_tel * u.deg).to_string(unit=u.hourangle, sep="", precision=3, pad=True)
         dec_str = Angle(dec_tel * u.deg).to_string(unit=u.deg, sep="", alwayssign=True, precision=2, pad=True)
         obsdate_str = Time(obstime).strftime("%Y-%m-%d")
+        hst_time_str = pd.to_datetime(obstime, utc=True).tz_convert("Pacific/Honolulu").strftime("%Y/%m/%d %H:%M:%S")
         ope_info_rows.append([
             ppc_code,         # val[0]: ppc_code
-            obsdate_str,      # val[1]: obsdate_in_hst (使用 UTC date as approximation)
+            obsdate_str,      # val[1]: obsdate_in_hst
             obstime,          # val[2]: obstime_in_utc
             design.pfsDesignId,  # val[3]: pfs_design_id
             ra_str,           # val[4]: ppc_ra_str (HHMMSS)
             dec_str,          # val[5]: ppc_dec_str (DDMMSS)
             pa_tel,           # val[6]: ppc_pa
-            obstime,          # val[7]: obstime_in_hst
-            exptime_per_frame,  # val[8]: single_exptime
+            hst_time_str,     # val[7]: obstime_in_hst
+            exptime_per_frame * n_frames,  # val[8]: total_exptime (will be divided by n_split_frame in OpeFile)
             n_frames,         # val[9]: n_split_frame
+            1,                # val[10]: ppc_priority
         ])
 
     # --- Generate OPE file ---
@@ -501,6 +503,8 @@ def generate_pfs_designs(
         try:
             from pfs_obsproc_planning.utils.make_opefile import OpeFile
             print(f"\n=== Generating OPE file ===")
+
+            proposal_id = p_cfg.get("proposal_id", "default_proposal") if p_cfg else config_yaml.get("proposal_id", "default_proposal")
 
             # Minimal conf dict required by OpeFile
             conf = {
@@ -511,6 +515,10 @@ def generate_pfs_designs(
                     "backup_dates": [],
                 },
                 "ssp": {"ssp": False},
+                "ppp": {
+                    "mode": "classic",
+                    "proposalIds": [proposal_id],
+                },
             }
 
             os.makedirs(ope_outdir, exist_ok=True)
@@ -546,6 +554,17 @@ def generate_pfs_designs(
                 f.write("# %ECSV 1.0\n# ---\n# datatype:\n# - {name: ob_code, datatype: string}\n# - {name: qa_reference_arm, datatype: string}\n# schema: astropy-2.0\nob_code qa_reference_arm\n")
 
             from pfs_obsproc_planning.utils.validation import validation as run_validation_tool
+            import pfs_obsproc_planning.utils.validation as val_module
+            
+            # Patch _format_float_1dp_max to safely handle string values like '0 (2)'
+            def safe_format_float_1dp_max(value):
+                if pd.isna(value):
+                    return value
+                try:
+                    return f"{float(value):.1f}".rstrip("0").rstrip(".")
+                except (ValueError, TypeError):
+                    return str(value)
+            val_module._format_float_1dp_max = safe_format_float_1dp_max
             
             print("\n=== Running Validation ===")
             # Prepare packages dirs

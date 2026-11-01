@@ -16,3 +16,5 @@ optimize_hex_fov_with_guidestars = "netflow_by_user.optimize_hex_fov_with_guides
 optimize_hex_fov_local_search = "netflow_by_user.optimize_hex_fov_local_search:main"
 merge_target_csv = "netflow_by_user.merge_target_csv:main"
 check_sky_sectors = "netflow_by_user.check_sky_sectors:main"
+plot_pointing_overlap = "netflow_by_user.plot_pointing_overlap:main"
+plot_sky_distribution = "netflow_by_user.plot_sky_distribution_from_files:main"

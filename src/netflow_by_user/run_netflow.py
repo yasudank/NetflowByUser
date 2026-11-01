@@ -578,11 +578,11 @@ def main():
         
         # 結果を ECSV に保存する
         opt_table = Table(
-            names=('ppc_code', 'ppc_ra', 'ppc_dec', 'ppc_pa', 'covered_count'),
-            dtype=('S30', 'f8', 'f8', 'f8', 'i4')
+            names=('ppc_code', 'ppc_ra', 'ppc_dec', 'ppc_pa', 'ppc_resolution', 'covered_count'),
+            dtype=('S30', 'f8', 'f8', 'f8', 'S10', 'i4')
         )
         for p in pointings:
-            opt_table.add_row((p['ppc_code'], p['ppc_ra'], p['ppc_dec'], p['ppc_pa'], p['covered_count']))
+            opt_table.add_row((p['ppc_code'], p['ppc_ra'], p['ppc_dec'], p['ppc_pa'], 'L', p['covered_count']))
             
         pointing_file = "optimized_pointings.ecsv"
         opt_table.write(pointing_file, format="ascii.ecsv", overwrite=True)

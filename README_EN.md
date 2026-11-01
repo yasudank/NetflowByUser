@@ -161,6 +161,44 @@ The search bounds and step sizes can be adjusted using the `--search_radius`, `-
 Additionally, you can use the `--avoid-gaps` option to apply a penalty to candidates that move away from adjacent pointings, which helps to avoid creating physical gaps in the contiguous grid.
 During execution, a report table showing the number of guide stars detected in each guide camera (AG0 to AG5), along with the total count and number of valid cameras, is output to the console. You can also specify `--report-file <path>` to save the report table to a text file, or `--add-columns` to include the guide star count columns (`ag0`..`ag5`, `n_guidestars`) in the output ECSV file.
 
+### (Optional) Pointing & Target Overlap Visualization Tool (`plot_pointing_overlap`)
+
+Generates a plot (PNG) showing the overlap between arbitrary pointing lists (ECSV/CSV) and target lists (CSV/ECSV).
+
+```bash
+# Basic usage
+plot_pointing_overlap --pointings cosmos/hexagons_cosmos_flat_centers.ecsv --targets cosmos/targets_all_20260514.csv --output overlap_plot.png
+
+# With priority filter and coloring options
+plot_pointing_overlap -p cosmos/hexagons_cosmos_flat_centers.ecsv -t cosmos/targets_all_20260514.csv --max-priority 2 --color-by pointing --output overlap_by_fov.png
+```
+
+- `--color-by`: Target coloring scheme:
+  - `pointing`: Colored by each FoV pointing (default)
+  - `priority`: Colored by target priority level
+  - `overlap`: Colored by the number of covering FoVs (coverage multiplicity)
+- `--config`, `-c`: Automatically load pointing and target paths from pipeline configuration (`netflow_pipeline_config.yaml`).
+- Prints coverage statistics (unique covered target percentage, per-FoV coverage, and overlap multiplicities) to the console.
+
+### (Optional) Sky Distribution Re-plotting Tool with Rubin/LSST FoV (`plot_sky_distribution`)
+
+Re-generates the `sky_distribution.png` plot directly from saved target partitions (`targets/` folder) and the raw science target catalog without needing to rerun the Netflow solver. It also overlays the **Rubin/LSST Field of View (3.5 deg diameter, 1.75 deg radius)** and the PFS hexagonal pointings.
+
+```bash
+# Automatically load from config file and generate plot
+plot_sky_distribution --config netflow_config_2026Nov.yaml --output sky_distribution_with_rubin.png
+
+# Manual invocation with custom Rubin center and radius
+plot_sky_distribution --targets-dir targets --science-targets xmm_lss/targets_all.csv --pointing-file xmm_lss/hexagons_xmm_lss_flat_centers.ecsv --rubin-ra 35.70 --rubin-dec -4.80 --rubin-radius 1.75 --output sky_distribution_with_rubin.png
+```
+
+- `--rubin-ra`, `--rubin-dec`: Center RA/Dec for Rubin/LSST FoV in deg (automatically inferred for standard fields like XMM-LSS [35.70°, -4.80°] or COSMOS [150.10°, 2.18°]).
+- `--rubin-radius`: Radius of Rubin/LSST FoV in deg (default: 1.75° = 3.5° diameter).
+- `--no-rubin`: Skip drawing Rubin/LSST circular boundary.
+- `--no-pfs-hex`: Skip drawing PFS hexagonal boundaries.
+
+
+
 ---
 
 ## 1. How to Run

@@ -636,7 +636,8 @@ def main():
         "guidestar_mag_min": 12.0,
         "guidestar_mag_max": 21.5,
         "bright_star_mag_limit": 12.0,
-        "bright_star_radius_arcmin": 1.5
+        "bright_star_radius_arcmin": 1.5,
+        "ppc_resolution": "L"
     }
 
     if args_conf.config and os.path.exists(args_conf.config):
@@ -706,6 +707,7 @@ def main():
     parser.add_argument("--guidestar-mag-max", type=float, default=defaults["guidestar_mag_max"], help="Maximum guide star magnitude")
     parser.add_argument("--bright-star-mag-limit", type=float, default=defaults["bright_star_mag_limit"], help="Bright star magnitude limit to avoid around broken fibers")
     parser.add_argument("--bright-star-radius-arcmin", type=float, default=defaults["bright_star_radius_arcmin"], help="Radius in arcminutes to avoid bright stars around broken fibers")
+    parser.add_argument("--ppc-resolution", default=defaults["ppc_resolution"], help="PFS spectrograph resolution for pointings (default: 'L')")
     args = parser.parse_args(remaining_argv)
     
     # 1. Read input CSV
@@ -782,11 +784,11 @@ def main():
     
     # 5. Save results to ECSV
     opt_table = Table(
-        names=('ppc_code', 'ppc_ra', 'ppc_dec', 'ppc_pa', 'covered_count'),
-        dtype=('S30', 'f8', 'f8', 'f8', 'i4')
+        names=('ppc_code', 'ppc_ra', 'ppc_dec', 'ppc_pa', 'ppc_resolution', 'covered_count'),
+        dtype=('S30', 'f8', 'f8', 'f8', 'S10', 'i4')
     )
     for p in pointings:
-        opt_table.add_row((p['ppc_code'], p['ppc_ra'], p['ppc_dec'], p['ppc_pa'], p['covered_count']))
+        opt_table.add_row((p['ppc_code'], p['ppc_ra'], p['ppc_dec'], p['ppc_pa'], args.ppc_resolution, p['covered_count']))
         
     opt_table.write(args.output, format="ascii.ecsv", overwrite=True)
     print(f"\nSaved optimized pointings to {args.output}")

@@ -1,0 +1,69 @@
+# Configuration for netflow fiber assignment and pfsDesign/OPE generation pipeline
+
+# Common/global settings
+proposal_id: "S26B-047"
+obstime: "2026-11-10T10:00:00Z"              # [Used by optimize_hex_fov_with_guidestars]
+
+# Input paths
+inputs:
+  #pointing_file: "./xmm_lss/hexagons_xmm_lss_flat_centers_opt.ecsv"
+  pointing_file: "optimized_pointings.ecsv"
+  #pointing_file: 
+  catalog_dir: "./xmm_lss/"                  # [Used by optimize_hex_fov_with_guidestars]
+  science_targets: "targets_all.csv" # [Used by optimize_hex_fov_with_guidestars] relative to catalog_dir, or absolute
+  fluxstd_targets: "fluxstd.ecsv"            # relative to catalog_dir, or absolute
+  sky_targets: "sky.ecsv"                    # relative to catalog_dir, or absolute
+  gaia_catalog: "./xmm_lss/gaia.ecsv"         # [Used by optimize_hex_fov_with_guidestars]
+  gaiadb_config: null                        # path to config.toml if using gaiadb for guide stars
+
+# Output paths
+outputs:
+  targets_dir: "targets"                     # target ECSV output folder (subfolders science/, fluxstd/, sky/ will be created)
+  plot_file: "sky_distribution.png"
+  fov_plot_file: "fov_coverage.png"           # [Used by optimize_hex_fov_with_guidestars (Output plot)]
+  text_output: "output.txt"
+
+# Netflow optimization parameters
+netflow:
+  random_seed: 20
+  nvisit: 1
+  t_obs: 900.0                              # seconds
+  num_fields: 7                             # [Used by optimize_hex_fov_with_guidestars (as num-fovs)]
+  max_priority: 2                            # [Used by optimize_hex_fov_with_guidestars]
+  min_stars_per_cam: 2                      # [Used by optimize_hex_fov_with_guidestars] Minimum guide stars required per guide camera
+  min_cams_with_stars: 6                    # [Used by optimize_hex_fov_with_guidestars] Minimum number of guide cameras that must meet the min_stars requirement
+  collision_distance: 2.0
+  elbow_collisions: true
+  broken_cobras_margin: 1.0
+  sky:
+    num_required: 400
+    non_observation_cost: 5000
+    min_per_location: 15
+  fluxstd:
+    num_required: 100
+    non_observation_cost: 5000
+    mag_min: 17.0
+    mag_max: 19.0
+  guidestars:
+    mag_min: 12.0                           # [Used by optimize_hex_fov_with_guidestars]
+    mag_max: 21.5                           # [Used by optimize_hex_fov_with_guidestars]
+
+# Gurobi solver options
+gurobi:
+  seed: 0
+  presolve: 1
+  method: 0
+  degenmoves: 0
+  heuristics: 0.6
+  mipfocus: 0
+  mipgap: 0.005
+  PreSOS2Encoding: 0
+  PreSOS1Encoding: 0
+  threads: 4
+
+# PfsDesign and OPE generation parameters
+pfs_design:
+  science_catalog_id: 10356
+  ope_template: "./ope_templates/template_latest.ope"
+  exptime_per_frame: 900.0
+  n_frames: 4

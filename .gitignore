@@ -29,6 +29,7 @@ optimized_pointings_with_gs.ecsv
 optimized_coverage.png
 optimized_coverage_with_gs.png
 sky_distribution.png
+*.png
 output.txt
 # OS-specific files
 .DS_Store
