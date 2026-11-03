@@ -156,6 +156,23 @@ def solve_assignment(bench, tgt, telescopes, pipe_config):
         # Compute observation strategy
         penalty = pipe_config["netflow"].get("locationGroupPenalty", 1e11)
         min_sky_per_loc = pipe_config["netflow"]["sky"].get("min_per_location", 12)
+        # Multiple visits: science targets accessible in >= prefer_visits visits are observed
+        # prefer_visits times or not at all (netflow's all-or-nothing). Targets accessible in fewer
+        # visits are worth single_visit_weight*N (N: class cost) per visit: each of their visits gets
+        # a reward (single_visit_weight + delta)*N that offsets the partial observation penalty
+        # (1 + delta)*N. The small delta keeps partial observations of the other targets unattractive.
+        prefer_visits = pipe_config["netflow"].get("prefer_visits")
+        if prefer_visits and prefer_visits > 1:
+            w = pipe_config["netflow"].get("single_visit_weight", 1.0 / prefer_visits)
+            delta = 0.01
+            for value in classdict.values():
+                if not value["calib"]:
+                    value["partialObservationCost"] = (1 + delta) * value["nonObservationCost"]
+            for t in tgt:
+                if t.targetclass.startswith("sci"):
+                    t._obs_time = float(prefer_visits * t_obs)
+            print(f"Science targets require {prefer_visits} visits "
+                  f"(fewer allowed only if not accessible enough, single_visit_weight={w})")
         prob = nf.buildProblem(bench, tgt, tpos, classdict, t_obs,
                                vis_cost, cobraMoveCost=cobraMoveCost,
                                collision_distance=pipe_config["netflow"]["collision_distance"],
@@ -172,6 +189,21 @@ def solve_assignment(bench, tgt, telescopes, pipe_config):
                                locationGroupPenalty=penalty,
                                **fiducial_kwargs)
 
+        if prefer_visits and prefer_visits > 1:
+            n_access = {}
+            for tidx, t in enumerate(tgt):
+                if not t.targetclass.startswith("sci"):
+                    continue
+                visits = [prob._vardict[name] for ivis in range(len(telescopes))
+                          if (name := nf.makeName("T_Tv", t.ID, ivis)) in prob._vardict]
+                if not visits:
+                    continue
+                n_access[tidx] = min(len(visits), prefer_visits)
+                prob.add_constraint(nf.makeName("maxvisits", t.ID), prob.sum(visits) <= prefer_visits)
+                if len(visits) < prefer_visits:
+                    reward = (w + delta) * classdict[t.targetclass]["nonObservationCost"]
+                    prob.cost += -reward * prob.sum(visits)
+
         print("solving the problem")
         prob.solve()
 
@@ -183,6 +215,19 @@ def solve_assignment(bench, tgt, telescopes, pipe_config):
                 if visited:
                     _, _, tidx, cidx, ivis = k1.split("_")
                     res[int(ivis)][int(tidx)] = int(cidx)
+
+        if prefer_visits and prefer_visits > 1:
+            n_visits = defaultdict(int)
+            for vis in res:
+                for tidx in vis:
+                    n_visits[tidx] += 1
+            table = defaultdict(lambda: defaultdict(int))
+            for tidx, k in n_access.items():
+                table[(tgt[tidx].targetclass, k)][n_visits[tidx]] += 1
+            print("Science targets by class, accessible visits and assigned visits:")
+            for (cls, k) in sorted(table, key=lambda x: (int(x[0].split("_P")[1]), x[1])):
+                print(f"  {cls:>8} accessible {k}{'+' if k == prefer_visits else ' '}: " +
+                      ", ".join(f"{n}x: {table[(cls, k)][n]:6d}" for n in range(prefer_visits + 1)))
 
         # Extract and format exposures data
         all_classes = set()
