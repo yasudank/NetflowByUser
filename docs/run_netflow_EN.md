@@ -57,6 +57,7 @@ graph TD
 ### Step 4: Run Fiber Assignment Optimization
 * Solves the fiber allocation network flow model using Gurobi via [netflow_solver.solve_assignment](file:///mnt/ugnas/work/PFS/galuda/netflow/src/netflow_by_user/netflow_solver.py).
 * The solver factors in target priority weights (with Priority 0 being the highest), required calibration and sky fiber counts, fiber positioner hardware limits (Cobra patrol regions), and collision constraints.
+* If `netflow.prefer_visits` is set, the multi-visit mode is used: targets accessible from several fields are either observed that many times or not at all ([details](./optimize_pointings_p0_EN.md#6-multi-visit-assignment-in-netflow-prefer_visits)).
 
 ### Step 5: Output Statistics & Save Results
 * Displays a summary table of fiber assignments per exposure (Science target counts by priority, Calibration stars, and Sky fibers) on standard output.

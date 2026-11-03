@@ -57,6 +57,7 @@ graph TD
 ### ステップ 4: ファイバーアサイン最適化の実行
 * [netflow_solver.solve_assignment](file:///mnt/ugnas/work/PFS/galuda/netflow/src/netflow_by_user/netflow_solver.py) を呼び出し、Gurobi 数理計画ソルバーを用いてネットワークフロー（整数線形計画問題）を解きます。
 * 科学天体の優先度（Priority）、キャリブレーション星・スカイ用の最低必要ファイバー数、ファイバー同士の衝突回避、およびコブラ（Cobra）アクチュエータの可動範囲（パトロール領域）の制約をすべて考慮し、最適な割り当てを瞬時に計算します。
+* 設定に `netflow.prefer_visits` がある場合は、複数の視野から届く天体を「全回数観測するか、観測しないか」で割り当てる複数回観測モードになります（[解説](./optimize_pointings_p0.md#6-netflow-での複数回観測の割り当てprefer_visits)）。
 
 ### ステップ 5: 統計出力と結果の保存
 * 露出（Exposure / Visit）ごとに、各カテゴリー（優先度ごとの科学天体、Cal星、Sky）のファイバー割り当て統計テーブルを標準出力に表示します。

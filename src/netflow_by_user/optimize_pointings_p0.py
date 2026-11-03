@@ -14,16 +14,18 @@ the reference layout. The search proceeds in two stages:
 
 For each candidate pointing, the targets accessible by each Cobra are computed
 with the same instrument model as netflow (black dots, broken Cobras, fiducials),
-and the number of P0 targets that can be assigned is evaluated by maximum
-bipartite matching over all pointings. Fiber collisions and calibration targets
-are not taken into account, so the numbers are upper bounds.
+and the number of P0 targets that can be assigned is evaluated by a maximum
+flow over all pointings (one fiber per target and pattern). Fiber collisions
+and calibration targets are not taken into account, so the numbers are upper
+bounds (in practice netflow reaches them for P0).
 Pointings that violate the guide star constraints (or have a bright star near a
 broken fiber) contribute no targets; the number of such pointings is minimized
 first.
 
 Several patterns (complete tilings observed one after another) can be used:
 --n-patterns K optimizes K patterns, and --fixed adds patterns that are kept
-as they are. With K patterns in total a target can get up to K fibers. Layouts
+as they are. With K patterns in total a target can get up to K fibers, at most
+one per pattern (as when netflow is run for each pattern separately). Layouts
 are compared lexicographically by the numbers of P0 targets observed at least
 1, 2, ..., K times, which favours covering every target first and then
 spreading the extra visits evenly. For given pointings these numbers are

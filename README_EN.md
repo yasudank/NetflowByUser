@@ -161,6 +161,28 @@ The search bounds and step sizes can be adjusted using the `--search_radius`, `-
 Additionally, you can use the `--avoid-gaps` option to apply a penalty to candidates that move away from adjacent pointings, which helps to avoid creating physical gaps in the contiguous grid.
 During execution, a report table showing the number of guide stars detected in each guide camera (AG0 to AG5), along with the total count and number of valid cameras, is output to the console. You can also specify `--report-file <path>` to save the report table to a text file, or `--add-columns` to include the guide star count columns (`ag0`..`ag5`, `n_guidestars`) in the output ECSV file.
 
+### 0.7 Pointing Optimization for P0 Targets (`optimize_pointings_p0`)
+
+Starting from a reference tiling (e.g. `xmm_lss/hexagons_xmm_lss_flat_centers.ecsv`), optimizes the center and PA of each field to maximize the **number of P0 targets that can actually get a fiber**. The targets accessible by each Cobra are computed with the same instrument model as netflow, and the guide star and bright-star-near-broken-fiber constraints are enforced. Observing the same area with several patterns (tilings) is supported: the number of P0 targets observed at least once is maximized first, then the numbers of visits are made as even as possible.
+
+```bash
+# One pattern
+optimize_pointings_p0 -c netflow_config_2026Nov.yaml --grid xmm_lss/hexagons_xmm_lss_flat_centers.ecsv \
+    -o xmm_lss/hexagons_xmm_lss_flat_centers_p0opt.ecsv --global-shift 0.6 --global-rot-step 10 \
+    --processes 20 --add-columns --report-file xmm_lss/p0opt_report.txt --plot xmm_lss/p0opt.png
+
+# Add a second pattern to a fixed existing one
+optimize_pointings_p0 -c netflow_config_2026Nov.yaml --grid xmm_lss/hexagons_xmm_lss_flat_centers.ecsv \
+    --fixed xmm_lss/hexagons_xmm_lss_flat_centers_p0opt.ecsv --code-suffix _B \
+    -o xmm_lss/hexagons_xmm_lss_flat_centers_p0opt_B.ecsv --global-shift 0.6 --global-rot-step 10 --processes 20
+
+# Optimize K patterns together (ppc_code gets _A, _B, ...)
+optimize_pointings_p0 -c netflow_config_2026Nov.yaml --grid xmm_lss/hexagons_xmm_lss_flat_centers.ecsv \
+    --n-patterns 6 --cycles 4 -o xmm_lss/hexagons_xmm_lss_flat_centers_p0opt_6pat.ecsv --processes 20
+```
+
+To assign fibers to several patterns with netflow, put the fields of all patterns into one `pointing_file` and add `netflow.prefer_visits: 2` to the configuration: targets accessible from two or more fields are then either observed twice or not at all (see "3. Configuration Parameters"). See [docs/optimize_pointings_p0_EN.md](docs/optimize_pointings_p0_EN.md) for the algorithm, all options and an example.
+
 ### (Optional) Pointing & Target Overlap Visualization Tool (`plot_pointing_overlap`)
 
 Generates a plot (PNG) showing the overlap between arbitrary pointing lists (ECSV/CSV) and target lists (CSV/ECSV).
@@ -250,6 +272,7 @@ Right before starting the assignment calculation with the netflow solver (Gurobi
 * Temporarily backs up the original required exposure times (`_obs_time`) of the target `science` stars.
 * Temporarily overwrites the exposure times of all targets with the single-pointing nominal exposure time `t_obs` defined in the config (default: `900.0`s). This optimizes the allocation for a single exposure independent of the catalog exposure times.
 * This optimization assumes that all targets will be finished within a single pointing. Changing the fiber configurations in the middle of a pointing is not considered in this step.
+* If `netflow.prefer_visits` (e.g. `2`) is set, the required exposure becomes `prefer_visits × t_obs` and targets accessible from several fields are either observed that many times or not at all. Targets accessible from one field only may be observed once, valued by `single_visit_weight`. See [docs/optimize_pointings_p0_EN.md](docs/optimize_pointings_p0_EN.md) for details.
 * **Applying SFA-based spatial uniform sky constraints**: The focal plane is divided into 20 geometric sectors (Laszlo regions), and the solver is strictly penalized (`locationGroupPenalty=1e11`) to enforce that at least 12 sky fibers are assigned to each region. This guarantees a spatially uniform and high-quality sky observation without practically sacrificing any science targets (leveraging the ample surplus of available fibers).
 * Even if the assignment solver (`solve_assignment`) finishes normally or throws an exception, the `try...finally` block **guarantees that the target data's `_obs_time` is restored to its original value**.
 
@@ -300,6 +323,8 @@ netflow:
   random_seed: 20                            # Random seed
   nvisit: 1                                  # Number of visits per pointing
   t_obs: 900.0                               # Single exposure time for overwrite (seconds)
+  prefer_visits: 2                           # (optional) multi-visit: targets accessible from >= 2 fields get 2 visits or none
+  single_visit_weight: 0.5                   # (optional) value of one visit for targets accessible from one field (2 visits = 1)
   num_fields: 4                              # Number of fields to optimize (FoV placement count)
   max_priority: 2                            # Maximum priority to consider for auto-optimization (smaller is higher priority)
   min_stars_per_cam: 2                       # Minimum guide stars required per guide camera

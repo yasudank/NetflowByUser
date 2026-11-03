@@ -161,6 +161,28 @@ optimize_hex_fov_local_search --input cosmos/hexagons_cosmos_flat_centers.ecsv -
 また、`--avoid-gaps` オプションを指定することで、隣接する視野同士に隙間ができないように（理想的な配置間隔から離れすぎないように）ペナルティを課して調整座標を選ぶことができます。
 実行時には、各ポインティングで各ガイドカメラ（AG0〜AG5）に何個のガイド星が入ったかのレポート表（および合計数や制約を満たしたカメラ数）がコンソールに出力されます。`--report-file <path>` を指定するとレポートをテキストファイルに出力でき、`--add-columns` を指定すると出力ECSVに各カメラの星数カラム（`ag0`〜`ag5`, `n_guidestars`）を追加して保存することも可能です。
 
+### 0.7. P0 天体を最大化するポインティング最適化 (`optimize_pointings_p0`)
+
+基準の敷き詰め（例: `xmm_lss/hexagons_xmm_lss_flat_centers.ecsv`）をもとに、**実際にファイバーを割り当てられる P0 天体の数**が最大になるように各視野の中心と PA を最適化します。netflow と同じ装置モデルで各 Cobra が届く天体を計算し、ガイド星の制約と故障ファイバー近傍の輝星の制約も満たします。同じ領域を複数のパターン（敷き詰め）で観測する場合にも対応し、1 回以上観測される P0 の数を最大化したうえで、観測回数が揃うように配置します。
+
+```bash
+# 1 パターン
+optimize_pointings_p0 -c netflow_config_2026Nov.yaml --grid xmm_lss/hexagons_xmm_lss_flat_centers.ecsv \
+    -o xmm_lss/hexagons_xmm_lss_flat_centers_p0opt.ecsv --global-shift 0.6 --global-rot-step 10 \
+    --processes 20 --add-columns --report-file xmm_lss/p0opt_report.txt --plot xmm_lss/p0opt.png
+
+# 既存のパターンを固定して 2 パターン目を追加
+optimize_pointings_p0 -c netflow_config_2026Nov.yaml --grid xmm_lss/hexagons_xmm_lss_flat_centers.ecsv \
+    --fixed xmm_lss/hexagons_xmm_lss_flat_centers_p0opt.ecsv --code-suffix _B \
+    -o xmm_lss/hexagons_xmm_lss_flat_centers_p0opt_B.ecsv --global-shift 0.6 --global-rot-step 10 --processes 20
+
+# K パターンをまとめて最適化（ppc_code に _A, _B, ... が付く）
+optimize_pointings_p0 -c netflow_config_2026Nov.yaml --grid xmm_lss/hexagons_xmm_lss_flat_centers.ecsv \
+    --n-patterns 6 --cycles 4 -o xmm_lss/hexagons_xmm_lss_flat_centers_p0opt_6pat.ecsv --processes 20
+```
+
+複数パターンを netflow で割り当てるときは、全パターンの視野を 1 つの `pointing_file` にまとめ、設定に `netflow.prefer_visits: 2` を加えて実行すると、2 視野以上から届く天体が「2 回観測されるか、観測されないか」のどちらかになるように割り当てられます（「3. 設定ファイルの設定項目」を参照）。アルゴリズム、全オプション、実例は [docs/optimize_pointings_p0.md](docs/optimize_pointings_p0.md) を参照してください。
+
 ### (参考) ポインティングとターゲットのオーバーラップ可視化ツール (`plot_pointing_overlap`)
 
 任意のポインティングリスト（ECSV または CSV）とターゲットリスト（CSV または ECSV）を受け取り、六角形 FoV とターゲットの重複・被覆状態を示す図（PNG）を生成します。
@@ -248,6 +270,7 @@ netflow ソルバー（Gurobi）による割り当て計算を行う直前に、
 * 観測対象の `science` 天体の本来の必要露出時間 (`_obs_time`) を一時的に退避します。
 * 各天体の露出時間を、設定ファイルに定義された1回あたりの観測露出時間 `t_obs` (デフォルト: `900.0`s) に一時的に上書きします。これにより、カタログ上の設定と切り離した露出条件での最適配置が計算されます。
 * この最適化では、すべての天体を一回の観測で終了するとして最適化を行います。観測の途中でファイバー配置を変えることは、このステップでは考慮されていません。
+* `netflow.prefer_visits` (例: `2`) を設定した場合は、要求露出を `prefer_visits × t_obs` とし、複数の視野から届く天体を「全回数観測するか、観測しないか」で割り当てます。1 視野からしか届かない天体は 1 回観測を許し、その価値を `single_visit_weight` で指定します。詳細は [docs/optimize_pointings_p0.md](docs/optimize_pointings_p0.md) を参照してください。
 * **SFAに基づくスカイの空間均等化制約の適用**: 焦点面上を20個の幾何学的なセクター（Laszlo領域）に分割し、それぞれの領域に対して「最低12本のスカイファイバーを必ず割り当てる」という強いペナルティ制約（`locationGroupPenalty=1e11`）をソルバーに課します。これにより、サイエンスターゲットの割り当て数を実質的に一切犠牲にすることなく（十分な余剰ファイバーを活用して）、空間的に均等で高品質なスカイ観測が保証されます。
 * 割り当て計算（`solve_assignment`）が正常に終了、または万が一例外で中断された場合でも、`try...finally` ブロックによって天体データの `_obs_time` を**確実に元の露出時間へ復元**します。
 
@@ -298,6 +321,8 @@ netflow:
   random_seed: 20                            # 乱数シード
   nvisit: 1                                  # ポインティングごとのビジット数
   t_obs: 900.0                               # 露出上書き用の観測時間 (秒)
+  prefer_visits: 2                           # (任意) 複数回観測: 2 視野以上から届く天体は 2 回観測するか観測しない
+  single_visit_weight: 0.5                   # (任意) 1 視野からしか届かない天体の 1 回観測の価値 (2 回観測 = 1)
   num_fields: 4                              # ポインティング自動最適化時の視野数 (FoVの配置数)
   max_priority: 2                            # ポインティング自動最適化で考慮する最大優先度 (小さい値ほど高優先)
   min_stars_per_cam: 2                       # 1つのガイドカメラ内に必要なガイド星の最小数
