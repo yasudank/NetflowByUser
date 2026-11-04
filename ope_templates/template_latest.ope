@@ -87,11 +87,11 @@ SETUPFIELD $DEF_PFS DESIGN_ID="designId" OBJECT="objectname" AG=ON COBRA=YES
 
 # Check Auto Guiding condition and start InRot correction Loop
 
-## Get spectrum                                         #!!! MODIFICATION NEEDED: objectname !!!#
+## Get spectrum                                         #!!! MODIFICATION NEEDED: exptime, objectname !!!#
 GETOBJECT $DEF_PFS EXPTIME="exptime" SEQ_NAME="objectname" 
 
 
-### SCIENCE:END  ###
+### SCIENCE:END ###
 
 
 
